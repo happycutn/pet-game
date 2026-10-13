@@ -1,0 +1,3140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>小小养成家 · 我的动物朋友</title>
+<style>
+/* ============================================================
+   小小养成家 · 儿童习惯养成游戏
+   单文件离线版 —— 无任何外部依赖
+   ============================================================ */
+
+:root{
+  --bg-1:#87CEEB;
+  --bg-2:#B8E4F5;
+  --bg-3:#DFF3FB;
+  --grass:#7BC96F;
+  --grass-dark:#5FA855;
+  --wood:#C89B6B;
+  --wood-dark:#A87C4F;
+  --card:#FFFFFF;
+  --card-soft:#FFF9F0;
+  --ink:#3A3226;
+  --ink-soft:#7A6E5D;
+  --brand:#FF8FA3;
+  --brand-dark:#E86B84;
+  --good:#4CAF50;
+  --good-soft:#E8F5E9;
+  --bad:#E57373;
+  --bad-soft:#FFEBEE;
+  --warn:#FFB74D;
+  --star:#FFD54F;
+  --coin:#FFC107;
+  --shadow:0 4px 0 rgba(0,0,0,.10);
+  --shadow-lg:0 8px 0 rgba(0,0,0,.10);
+  --r-lg:22px;
+  --r-md:16px;
+  --r-sm:10px;
+  --font:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+html,body{height:100%}
+
+body{
+  font-family:var(--font);
+  color:var(--ink);
+  background:linear-gradient(180deg,var(--bg-1) 0%,var(--bg-2) 45%,var(--bg-3) 100%);
+  overflow:hidden;
+  position:fixed;
+  inset:0;
+  user-select:none;
+  -webkit-user-select:none;
+}
+
+/* ---------- 背景装饰：云朵 + 草地 ---------- */
+.sky-deco{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.cloud{position:absolute;background:#fff;border-radius:100px;opacity:.85;
+  box-shadow:0 6px 0 rgba(135,190,220,.20);animation:cloudFloat linear infinite}
+.cloud::before,.cloud::after{content:"";position:absolute;background:#fff;border-radius:50%}
+.cloud::before{width:60%;height:160%;left:12%;top:-70%}
+.cloud::after{width:45%;height:130%;right:10%;top:-50%}
+@keyframes cloudFloat{from{transform:translateX(-30vw)}to{transform:translateX(130vw)}}
+.c1{width:110px;height:38px;top:6%;animation-duration:52s}
+.c2{width:78px;height:28px;top:16%;animation-duration:68s;animation-delay:-20s;opacity:.7}
+.c3{width:140px;height:46px;top:3%;animation-duration:84s;animation-delay:-45s;opacity:.6}
+
+.grass-layer{position:fixed;left:0;right:0;bottom:0;height:22vh;z-index:0;pointer-events:none}
+.grass-layer svg{width:100%;height:100%;display:block}
+
+/* ---------- 通用容器 ---------- */
+.screen{
+  position:relative;z-index:1;
+  height:100%;
+  display:none;
+  flex-direction:column;
+  padding:14px 14px 16px;
+  max-width:760px;
+  margin:0 auto;
+  width:100%;
+}
+.screen.active{display:flex;animation:screenIn .35s ease-out}
+@keyframes screenIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* ---------- 按钮 ---------- */
+.btn{
+  font-family:var(--font);
+  border:none;border-radius:var(--r-md);
+  font-size:16px;font-weight:700;
+  padding:12px 20px;
+  cursor:pointer;
+  transition:transform .1s ease,box-shadow .1s ease,filter .15s;
+  box-shadow:var(--shadow);
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  line-height:1.2;
+}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.10)}
+.btn:disabled{opacity:.42;cursor:not-allowed;transform:none!important;box-shadow:var(--shadow)!important;filter:grayscale(.6)}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:hover:not(:disabled){filter:brightness(1.06)}
+.btn-good{background:var(--good);color:#fff}
+.btn-bad{background:var(--bad);color:#fff}
+.btn-ghost{background:#fff;color:var(--ink);border:2px solid #E8DFD0}
+.btn-coin{background:linear-gradient(180deg,#FFD54F,#FFB300);color:#6B4A00}
+.btn-sm{font-size:14px;padding:9px 14px;border-radius:12px}
+.btn-xs{font-size:13px;padding:7px 11px;border-radius:10px}
+.btn-block{width:100%}
+
+/* ---------- 顶栏 ---------- */
+.hud{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.92);
+  border-radius:var(--r-lg);
+  padding:9px 12px;
+  box-shadow:var(--shadow);
+  backdrop-filter:blur(6px);
+  flex-shrink:0;
+}
+.hud-pet{
+  display:flex;align-items:center;gap:8px;min-width:0;flex:1;
+}
+.hud-avatar{
+  width:40px;height:40px;border-radius:50%;
+  background:var(--card-soft);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;flex-shrink:0;border:2px solid #F0E6D6;
+}
+.hud-avatar svg{width:34px;height:34px}
+.hud-name{font-weight:800;font-size:15px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hud-sub{font-size:11px;color:var(--ink-soft);line-height:1.2}
+.hud-stats{display:flex;gap:6px;flex-shrink:0}
+.chip{
+  display:flex;align-items:center;gap:4px;
+  background:#FFF6E0;border-radius:12px;
+  padding:5px 9px;font-weight:800;font-size:14px;
+  white-space:nowrap;
+}
+.chip.coin{background:#FFF3D0;color:#8A5A00}
+.chip.score{background:#E9F6EA;color:#2E7D32}
+.chip.score.neg{background:var(--bad-soft);color:#B93A3A}
+
+/* ---------- 卡片 ---------- */
+.card{
+  background:var(--card);
+  border-radius:var(--r-lg);
+  box-shadow:var(--shadow-lg);
+  padding:16px;
+}
+.card-title{font-size:17px;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:7px}
+
+/* ---------- 滚动区 ---------- */
+.scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.scroll::-webkit-scrollbar{width:6px}
+.scroll::-webkit-scrollbar-thumb{background:rgba(0,0,0,.16);border-radius:3px}
+
+/* ============================================================
+   屏幕 1：领养
+   ============================================================ */
+#screenAdopt{padding-top:22px}
+.adopt-head{text-align:center;flex-shrink:0;margin-bottom:12px}
+.adopt-title{font-size:27px;font-weight:900;color:#fff;letter-spacing:1px;
+  text-shadow:0 3px 0 rgba(0,0,0,.16),0 0 22px rgba(255,255,255,.5)}
+.adopt-sub{font-size:14px;color:rgba(255,255,255,.96);margin-top:5px;font-weight:600;
+  text-shadow:0 1px 3px rgba(0,0,0,.14)}
+
+.pet-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+  margin-bottom:12px;
+}
+.pet-card{
+  background:var(--card);border-radius:var(--r-lg);
+  padding:10px 6px 12px;text-align:center;cursor:pointer;
+  border:3px solid transparent;
+  box-shadow:var(--shadow);
+  transition:transform .16s cubic-bezier(.34,1.56,.64,1),border-color .16s,box-shadow .16s;
+  position:relative;
+}
+.pet-card:active{transform:scale(.95)}
+.pet-card.selected{
+  border-color:var(--brand);
+  transform:translateY(-4px) scale(1.03);
+  box-shadow:0 10px 0 rgba(232,107,132,.20),0 0 0 4px rgba(255,143,163,.22);
+}
+.pet-card.selected::after{
+  content:"✓";position:absolute;top:-9px;right:-9px;
+  width:26px;height:26px;border-radius:50%;
+  background:var(--brand);color:#fff;font-weight:900;font-size:15px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 0 rgba(0,0,0,.15);
+  animation:pop .3s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+.pet-card .stage{height:74px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px}
+.pet-card .stage svg{height:70px;width:auto;max-width:100%}
+.pet-card .pname{font-size:13px;font-weight:800;color:var(--ink)}
+.pet-card .ptag{font-size:10px;color:var(--ink-soft);margin-top:1px;line-height:1.3}
+
+.adopt-foot{flex-shrink:0;display:flex;gap:9px;align-items:center}
+.name-input{
+  flex:1;font-family:var(--font);font-size:16px;font-weight:700;
+  padding:12px 15px;border-radius:var(--r-md);
+  border:2px solid #E8DFD0;background:#fff;color:var(--ink);
+  outline:none;transition:border-color .15s;min-width:0;
+}
+.name-input:focus{border-color:var(--brand)}
+.name-input::placeholder{color:#BBB0A0;font-weight:600}
+.quick-names{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;flex-shrink:0}
+.qn{
+  background:rgba(255,255,255,.9);border:none;border-radius:20px;
+  padding:6px 12px;font-size:13px;font-weight:700;color:var(--ink);
+  cursor:pointer;font-family:var(--font);box-shadow:0 2px 0 rgba(0,0,0,.08);
+}
+.qn:active{transform:translateY(2px);box-shadow:none}
+.qn.qn-dice{background:linear-gradient(180deg,#FFE082,#FFC107);color:#6B4A00;font-weight:800}
+
+/* ============================================================
+   屏幕 2：主游戏
+   ============================================================ */
+#screenGame{padding-top:10px;gap:9px}
+
+/* 场景 */
+.scene{
+  position:relative;flex:1;min-height:180px;
+  border-radius:var(--r-lg);
+  background:linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,.12) 55%,rgba(123,201,111,.28) 100%);
+  box-shadow:inset 0 0 0 3px rgba(255,255,255,.55),var(--shadow-lg);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+.scene-inner{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+
+/* 宠物舞台 */
+.pet-stage{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:transform .3s;cursor:pointer}
+#bigPet{width:min(200px,48vw);height:min(200px,48vw);display:block;
+  filter:drop-shadow(0 8px 10px rgba(0,0,0,.16));}
+#bigPet.pet-happy{animation:petBounce 1.5s ease-in-out infinite}
+#bigPet.pet-normal{animation:petBreathe 3s ease-in-out infinite}
+#bigPet.pet-sad{animation:petSway 4s ease-in-out infinite}
+#bigPet.pet-sick{animation:petSwaySlow 5s ease-in-out infinite;filter:drop-shadow(0 6px 8px rgba(0,0,0,.16)) grayscale(.42)}
+@keyframes petBounce{0%,100%{transform:translateY(0) scale(1)}30%{transform:translateY(-16px) scale(1.03)}55%{transform:translateY(0) scale(.98)}}
+@keyframes petBreathe{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-5px) scale(1.022)}}
+@keyframes petSway{0%,100%{transform:translateX(0) rotate(0)}25%{transform:translateX(-7px) rotate(-2.2deg)}75%{transform:translateX(7px) rotate(2.2deg)}}
+@keyframes petSwaySlow{0%,100%{transform:translateX(0) rotate(0)}50%{transform:translateX(-5px) rotate(-3deg)}}
+.pet-stage.eating #bigPet{animation:petEat .38s ease-in-out 6}
+@keyframes petEat{0%,100%{transform:scale(1) translateY(0)}45%{transform:scale(1.1,.92) translateY(7px)}}
+
+/* 影子 */
+.pet-shadow{
+  width:52%;height:11px;border-radius:50%;
+  background:rgba(60,80,50,.20);filter:blur(3px);
+  margin-top:-6px;transition:width .3s,opacity .3s;
+}
+
+/* 气泡 */
+.bubble{
+  position:absolute;top:8%;left:50%;transform:translateX(-50%) scale(.6);
+  background:#fff;border-radius:16px;padding:9px 14px;
+  font-size:14px;font-weight:800;color:var(--ink);
+  box-shadow:0 3px 0 rgba(0,0,0,.10);
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .25s cubic-bezier(.34,1.56,.64,1);
+  max-width:78%;text-align:center;line-height:1.35;z-index:5;
+}
+.bubble::after{content:"";position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);
+  border:8px solid transparent;border-top-color:#fff;border-bottom:none}
+.bubble.show{opacity:1;transform:translateX(-50%) scale(1)}
+
+/* 状态徽章 */
+.status-badge{
+  position:absolute;top:9px;left:9px;
+  display:flex;align-items:center;gap:5px;
+  padding:6px 12px;border-radius:20px;
+  font-size:12.5px;font-weight:800;color:#fff;
+  box-shadow:0 3px 0 rgba(0,0,0,.13);
+  z-index:4;transition:background .3s;
+}
+
+/* 分数飘字 */
+.float-txt{
+  position:absolute;font-size:24px;font-weight:900;
+  pointer-events:none;z-index:20;
+  text-shadow:0 2px 0 rgba(255,255,255,.9);
+  animation:floatUp 1.25s ease-out forwards;
+}
+@keyframes floatUp{
+  0%{opacity:0;transform:translate(-50%,0) scale(.5)}
+  22%{opacity:1;transform:translate(-50%,-18px) scale(1.25)}
+  100%{opacity:0;transform:translate(-50%,-95px) scale(.95)}
+}
+.heart-pop{position:absolute;font-size:24px;pointer-events:none;z-index:20;animation:heartUp 1.3s ease-out forwards}
+@keyframes heartUp{
+  0%{opacity:0;transform:translate(-50%,0) scale(.4) rotate(0)}
+  25%{opacity:1;transform:translate(-50%,-22px) scale(1.2) rotate(-12deg)}
+  100%{opacity:0;transform:translate(-50%,-105px) scale(.85) rotate(14deg)}
+}
+
+/* 状态条组 */
+.bars{display:flex;gap:8px;flex-shrink:0}
+.bar-wrap{
+  flex:1;background:rgba(255,255,255,.94);border-radius:var(--r-md);
+  padding:8px 11px;box-shadow:var(--shadow);
+}
+.bar-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:800;margin-bottom:5px}
+.bar-top .lbl{color:var(--ink-soft)}
+.bar-track{height:11px;background:#EDE5D8;border-radius:6px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:6px;transition:width .6s cubic-bezier(.34,1.3,.64,1),background .4s}
+.bar-fill.hunger{background:linear-gradient(90deg,#FFB74D,#FF9800)}
+.bar-fill.hunger.low{background:linear-gradient(90deg,#FF8A65,#E53935)}
+.bar-fill.mood{background:linear-gradient(90deg,#81C784,#4CAF50)}
+.bar-fill.mood.low{background:linear-gradient(90deg,#FFD54F,#FFB300)}
+.bar-pulse{animation:barPulse 1.1s ease-in-out infinite}
+@keyframes barPulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* 行动栏 */
+.actions{display:flex;gap:8px;flex-shrink:0}
+.actions .btn{flex:1;flex-direction:column;gap:2px;padding:9px 5px;font-size:12px}
+.actions .btn .ico{font-size:19px;line-height:1}
+.actions .btn .sub{font-size:10px;font-weight:600;opacity:.85}
+
+/* 预警条 */
+.alert-banner{
+  flex-shrink:0;border-radius:var(--r-md);padding:9px 13px;
+  font-size:13px;font-weight:800;display:none;align-items:center;gap:8px;
+  box-shadow:var(--shadow);
+}
+.alert-banner.show{display:flex;animation:alertIn .4s cubic-bezier(.34,1.56,.64,1)}
+@keyframes alertIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.alert-level1{background:#FFF8E1;color:#8D6E00;border-left:5px solid var(--star)}
+.alert-level2{background:#FFF3E0;color:#B25E00;border-left:5px solid #FF9800}
+.alert-level3{background:#FFEBEE;color:#B93A3A;border-left:5px solid var(--bad);animation:alertIn .4s,urgentFlash 1.4s infinite}
+@keyframes urgentFlash{0%,100%{box-shadow:0 3px 0 rgba(0,0,0,.10)}50%{box-shadow:0 3px 0 rgba(0,0,0,.10),0 0 0 5px rgba(229,115,115,.28)}}
+
+/* 底部 tab */
+.tabs{
+  display:flex;gap:6px;flex-shrink:0;
+  background:rgba(255,255,255,.94);border-radius:var(--r-lg);
+  padding:6px;box-shadow:var(--shadow);
+  position:relative;z-index:110;
+  margin:0 14px 8px;
+}
+.tab{
+  flex:1;border:none;background:transparent;border-radius:var(--r-md);
+  padding:9px 4px;font-family:var(--font);font-size:12.5px;font-weight:800;
+  color:var(--ink-soft);cursor:pointer;transition:background .18s,color .18s;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.tab .ico{font-size:18px;line-height:1}
+.tab.active{background:var(--brand);color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.12)}
+.tab:active{transform:scale(.96)}
+/* 面板打开时，tab 栏浮在上方，可随时切换 */
+body.sheet-open #screenGame{
+  z-index:120;               /* 抬升整个屏幕的堆叠上下文，使其高于 .sheet-mask(100) */
+  pointer-events:none;       /* 只有 tab 栏可点，其余部分让给面板 */
+}
+body.sheet-open #screenGame > *:not(.tabs){
+  visibility:hidden;         /* 隐藏游戏内容，只留 tab 栏浮层 */
+}
+body.sheet-open .tabs{
+  position:fixed;left:0;right:0;bottom:0;
+  max-width:760px;margin:0 auto;
+  border-radius:var(--r-lg) var(--r-lg) 0 0;
+  box-shadow:0 -4px 14px rgba(0,0,0,.16);
+  padding:6px 6px calc(6px + env(safe-area-inset-bottom));
+  pointer-events:auto;       /* 恢复 tab 栏的点击 */
+  visibility:visible;
+}
+
+/* ============================================================
+   底部弹层 / 模态
+   ============================================================ */
+.sheet-mask{
+  position:fixed;inset:0;background:rgba(40,32,20,.5);
+  z-index:100;display:none;align-items:flex-end;justify-content:center;
+  backdrop-filter:blur(3px);
+}
+.sheet-mask.show{display:flex;animation:fadeIn .22s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.sheet{
+  background:var(--card);width:100%;max-width:760px;
+  border-radius:var(--r-lg) var(--r-lg) 0 0;
+  padding:16px 16px 18px;
+  max-height:82vh;display:flex;flex-direction:column;
+  animation:sheetUp .32s cubic-bezier(.34,1.3,.64,1);
+  margin-bottom:74px;
+}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+@media(max-height:640px){ .sheet{max-height:76vh;margin-bottom:68px} }
+.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-shrink:0}
+.sheet-title{font-size:18px;font-weight:900}
+.sheet-close{
+  width:34px;height:34px;border-radius:50%;border:none;
+  background:#F2ECE0;color:var(--ink-soft);font-size:19px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.sheet-close:active{transform:scale(.9)}
+.sheet-body{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1}
+
+/* 行为条目 */
+.behav-list{display:flex;flex-direction:column;gap:7px}
+.behav{
+  display:flex;align-items:center;gap:10px;
+  background:var(--card-soft);border-radius:var(--r-md);
+  padding:10px 12px;border:2px solid #F0E8DA;
+}
+.behav .bico{font-size:22px;flex-shrink:0;width:30px;text-align:center}
+.behav .btxt{flex:1;min-width:0}
+.behav .bname{font-size:14.5px;font-weight:800;line-height:1.25}
+.behav .bdesc{font-size:11.5px;color:var(--ink-soft);margin-top:2px;line-height:1.3}
+.behav .bpts{
+  font-size:13px;font-weight:900;padding:4px 9px;border-radius:9px;flex-shrink:0;
+}
+.behav .bpts.pos{background:var(--good-soft);color:#2E7D32}
+.behav .bpts.neg{background:var(--bad-soft);color:#B93A3A}
+.behav .bdel{
+  border:none;background:transparent;color:#C9BCAA;font-size:16px;
+  cursor:pointer;padding:4px;flex-shrink:0;line-height:1;
+}
+.behav .bdel:active{color:var(--bad)}
+
+.behav.clickable{cursor:pointer;transition:transform .12s,background .16s}
+.behav.clickable:active{transform:scale(.975);background:#F5EEE0}
+
+/* 分组标题 */
+.group-title{
+  font-size:13px;font-weight:900;color:var(--ink-soft);
+  margin:14px 0 7px;display:flex;align-items:center;gap:6px;
+}
+.group-title:first-child{margin-top:0}
+
+/* 自定义行为表单 */
+.form-row{display:flex;gap:7px;margin-bottom:8px;align-items:center}
+.form-row input[type=text],.form-row input[type=number],.form-row select{
+  font-family:var(--font);font-size:14.5px;font-weight:700;
+  padding:10px 12px;border-radius:var(--r-sm);
+  border:2px solid #E8DFD0;background:#fff;color:var(--ink);outline:none;min-width:0;
+}
+.form-row input:focus,.form-row select:focus{border-color:var(--brand)}
+.form-row .f-name{flex:1}
+.form-row .f-pts{width:74px;text-align:center}
+.pin-input{width:100%;text-align:center;font-size:26px!important;letter-spacing:12px;font-weight:900!important}
+
+/* 食物商店 */
+.food-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.food-card{
+  background:var(--card-soft);border-radius:var(--r-md);
+  padding:11px 7px;text-align:center;cursor:pointer;
+  border:3px solid transparent;box-shadow:var(--shadow);
+  transition:transform .14s cubic-bezier(.34,1.56,.64,1),border-color .14s;
+  position:relative;
+}
+.food-card:active{transform:scale(.94)}
+.food-card.afford{border-color:rgba(76,175,80,.35)}
+.food-card.cant{opacity:.5;filter:grayscale(.5)}
+.food-card .fico{font-size:31px;line-height:1;margin-bottom:5px}
+.food-card .fname{font-size:12.5px;font-weight:800;line-height:1.2}
+.food-card .fprice{
+  font-size:12.5px;font-weight:900;color:#8A5A00;margin-top:5px;
+  background:#FFF3D0;border-radius:8px;padding:2px 6px;display:inline-block;
+}
+.food-card .fheal{font-size:10px;color:var(--ink-soft);margin-top:3px}
+
+/* 背包 */
+.bag-list{display:flex;flex-direction:column;gap:7px}
+.bag-item{
+  display:flex;align-items:center;gap:11px;
+  background:var(--card-soft);border-radius:var(--r-md);padding:10px 12px;
+  border:2px solid #F0E8DA;
+}
+.bag-item .bico{font-size:27px}
+.bag-item .binfo{flex:1;min-width:0}
+.bag-item .bn{font-size:14px;font-weight:800}
+.bag-item .bd{font-size:11px;color:var(--ink-soft);margin-top:1px}
+.bag-item .bqty{
+  font-size:15px;font-weight:900;color:#8A5A00;background:#FFF3D0;
+  border-radius:9px;padding:3px 9px;min-width:38px;text-align:center;
+}
+
+/* 历史记录 */
+.log-list{display:flex;flex-direction:column;gap:6px}
+.log-item{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 11px;border-radius:var(--r-sm);
+  background:#FBF7F0;font-size:13px;
+}
+.log-item.pos{border-left:4px solid var(--good)}
+.log-item.neg{border-left:4px solid var(--bad)}
+.log-item .lname{flex:1;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-item .lpts{font-weight:900;flex-shrink:0}
+.log-item .lpts.pos{color:#2E7D32}
+.log-item .lpts.neg{color:#B93A3A}
+.log-item .ltime{font-size:10.5px;color:var(--ink-soft);flex-shrink:0;font-weight:600}
+
+.empty-tip{text-align:center;padding:26px 14px;color:var(--ink-soft);font-size:13.5px;line-height:1.7}
+.empty-tip .big{font-size:38px;display:block;margin-bottom:8px;opacity:.55}
+
+/* 设置项 */
+.set-list{display:flex;flex-direction:column;gap:8px}
+.set-item{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:var(--card-soft);border-radius:var(--r-md);padding:12px 14px;
+  border:2px solid #F0E8DA;
+}
+.set-item .stxt{flex:1;min-width:0}
+.set-item .sn{font-size:14px;font-weight:800}
+.set-item .sd{font-size:11.5px;color:var(--ink-soft);margin-top:2px;line-height:1.35}
+.switch{
+  width:50px;height:29px;border-radius:15px;background:#D8CFC0;
+  position:relative;cursor:pointer;transition:background .22s;flex-shrink:0;border:none;
+}
+.switch::after{
+  content:"";position:absolute;top:3px;left:3px;width:23px;height:23px;
+  border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.22);
+  transition:transform .22s cubic-bezier(.34,1.3,.64,1);
+}
+.switch.on{background:var(--good)}
+.switch.on::after{transform:translateX(21px)}
+
+/* ============================================================
+   庆祝 / 离家出走 全屏层
+   ============================================================ */
+.overlay{
+  position:fixed;inset:0;z-index:200;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  padding:26px;text-align:center;
+}
+.overlay.show{display:flex;animation:fadeIn .3s}
+#celebration{background:radial-gradient(circle at 50% 40%,rgba(255,241,180,.97),rgba(255,214,120,.95))}
+#runaway{background:linear-gradient(180deg,#4A5A6B,#2E3B47)}
+.ov-title{font-size:27px;font-weight:900;margin-bottom:9px;animation:pop .45s cubic-bezier(.34,1.56,.64,1)}
+.ov-sub{font-size:15px;font-weight:700;line-height:1.6;margin-bottom:18px;max-width:430px}
+#celebration .ov-title{color:#8A5A00}
+#celebration .ov-sub{color:#A0760F}
+#runaway .ov-title{color:#fff}
+#runaway .ov-sub{color:rgba(255,255,255,.88)}
+.ov-art{width:min(190px,46vw);height:min(190px,46vw);margin-bottom:14px}
+.ov-art svg{width:100%;height:100%;filter:drop-shadow(0 10px 14px rgba(0,0,0,.22))}
+.ov-art svg.leave{animation:leaveWalk 3s ease-in forwards}
+@keyframes leaveWalk{
+  0%{transform:translateX(0) scale(1) rotate(0);opacity:1}
+  55%{transform:translateX(-42px) scale(.94) rotate(-6deg);opacity:.95}
+  100%{transform:translateX(-150px) scale(.75) rotate(-14deg);opacity:0}
+}
+.confetti{position:absolute;width:11px;height:11px;border-radius:2px;pointer-events:none;
+  animation:confettiFall linear forwards}
+@keyframes confettiFall{
+  0%{transform:translateY(-12vh) rotate(0);opacity:1}
+  100%{transform:translateY(112vh) rotate(760deg);opacity:0}
+}
+
+/* 离家出走的雨天 */
+.rain{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.drop{position:absolute;width:2px;height:16px;background:rgba(255,255,255,.35);border-radius:1px;
+  animation:rainFall linear infinite}
+@keyframes rainFall{from{transform:translateY(-10vh)}to{transform:translateY(110vh)}}
+
+/* ============================================================
+   顶部 Toast
+   ============================================================ */
+#toast{
+  position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-140%);
+  background:rgba(58,50,38,.95);color:#fff;
+  padding:11px 20px;border-radius:26px;font-size:14px;font-weight:800;
+  z-index:300;transition:transform .32s cubic-bezier(.34,1.4,.64,1);
+  box-shadow:0 6px 18px rgba(0,0,0,.24);max-width:86vw;text-align:center;
+  pointer-events:none;
+}
+#toast.show{transform:translateX(-50%) translateY(0)}
+
+/* 音效按钮 */
+.icon-btn{
+  border:none;background:transparent;font-size:19px;cursor:pointer;
+  padding:5px;line-height:1;border-radius:50%;flex-shrink:0;
+}
+.icon-btn:active{transform:scale(.88)}
+
+/* 响应式 */
+@media(max-width:400px){
+  .pet-grid{grid-template-columns:repeat(2,1fr)}
+  .food-grid{grid-template-columns:repeat(3,1fr)}
+  .adopt-title{font-size:23px}
+  #bigPet{width:min(168px,44vw);height:min(168px,44vw)}
+  .hud-name{font-size:14px}
+  .chip{font-size:13px;padding:4px 7px}
+  .actions .btn{font-size:11px;padding:8px 3px}
+  .actions .btn .ico{font-size:17px}
+  .tab{font-size:11px}
+  .tab .ico{font-size:16px}
+}
+@media(min-width:700px){
+  .pet-grid{grid-template-columns:repeat(6,1fr)}
+  #bigPet{width:210px;height:210px}
+}
+/* 横屏手机 */
+@media(max-height:520px) and (orientation:landscape){
+  .scene{min-height:120px}
+  #bigPet{width:130px;height:130px}
+  .bars{display:none}
+  .adopt-head{margin-bottom:6px}
+  .adopt-title{font-size:20px}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important}
+}
+</style>
+</head>
+<body>
+
+<div class="sky-deco">
+  <div class="cloud c1"></div>
+  <div class="cloud c2"></div>
+  <div class="cloud c3"></div>
+</div>
+<div class="grass-layer">
+  <svg viewBox="0 0 400 120" preserveAspectRatio="none">
+    <path d="M0,58 Q50,38 100,54 Q150,68 200,50 Q250,34 300,52 Q350,68 400,48 L400,120 L0,120 Z" fill="#7BC96F" opacity=".55"/>
+    <path d="M0,78 Q60,62 120,76 Q180,90 240,72 Q300,56 360,76 Q385,84 400,78 L400,120 L0,120 Z" fill="#5FA855" opacity=".7"/>
+    <path d="M0,98 Q70,86 140,96 Q210,106 280,94 Q340,84 400,96 L400,120 L0,120 Z" fill="#4E9448" opacity=".8"/>
+  </svg>
+</div>
+
+<!-- ============================================================
+     屏幕 1：领养
+     ============================================================ -->
+<div class="screen active" id="screenAdopt">
+  <div class="adopt-head">
+    <div class="adopt-title">🐾 领养你的动物朋友</div>
+    <div class="adopt-sub">选一只小动物，给它起个名字吧！</div>
+  </div>
+
+  <div class="scroll" style="flex:1;margin-bottom:10px">
+    <div class="pet-grid" id="petGrid"></div>
+  </div>
+
+  <div class="quick-names" id="quickNames"></div>
+
+  <div class="adopt-foot">
+    <input class="name-input" id="petNameInput" type="text" maxlength="10"
+           placeholder="给 TA 取个名字…" autocomplete="off"
+           enterkeyhint="done" spellcheck="false">
+    <button class="btn btn-primary" id="btnAdopt" disabled>领养 💖</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     屏幕 2：主游戏
+     ============================================================ -->
+<div class="screen" id="screenGame">
+
+  <!-- 顶栏 -->
+  <div class="hud">
+    <div class="hud-pet">
+      <div class="hud-avatar" id="hudAvatar"></div>
+      <div style="min-width:0">
+        <div class="hud-name" id="hudName">—</div>
+        <div class="hud-sub" id="hudSub">—</div>
+      </div>
+    </div>
+    <div class="hud-stats">
+      <div class="chip coin" id="chipCoin">🪙 <span>0</span></div>
+      <div class="chip score" id="chipScore">⭐ <span>0</span></div>
+    </div>
+    <button class="icon-btn" id="btnSound" title="音效开关">🔊</button>
+  </div>
+
+  <!-- 预警条 -->
+  <div class="alert-banner" id="alertBanner"></div>
+
+  <!-- 场景 -->
+  <div class="scene">
+    <div class="status-badge" id="statusBadge">😊 开心</div>
+    <div class="bubble" id="bubble">你好呀！</div>
+    <div class="scene-inner">
+      <div class="pet-stage" id="petStage">
+        <svg id="bigPet" viewBox="0 0 200 200"></svg>
+        <div class="pet-shadow"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 状态条 -->
+  <div class="bars">
+    <div class="bar-wrap">
+      <div class="bar-top">
+        <span class="lbl">🍖 饱食度</span>
+        <span id="hungerVal">100%</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill hunger" id="hungerBar" style="width:100%"></div></div>
+    </div>
+    <div class="bar-wrap">
+      <div class="bar-top">
+        <span class="lbl">💗 心情</span>
+        <span id="moodVal">100%</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill mood" id="moodBar" style="width:100%"></div></div>
+      <div id="moodTip" style="font-size:10px;font-weight:800;margin-top:4px;color:var(--ink-soft);line-height:1.3"></div>
+    </div>
+  </div>
+
+  <!-- 行动 -->
+  <div class="actions">
+    <button class="btn btn-ghost" id="btnStore"><span class="ico">🏪</span><span>食物商店</span></button>
+    <button class="btn btn-coin" id="btnFeed"><span class="ico">🍽️</span><span>喂食</span><span class="sub" id="feedSub">—</span></button>
+    <button class="btn btn-ghost" id="btnPetIt"><span class="ico">🤗</span><span>摸摸头</span></button>
+  </div>
+
+  <!-- 底部 tab -->
+  <div class="tabs">
+    <button class="tab active" data-tab="home"><span class="ico">🏠</span>小窝</button>
+    <button class="tab" data-tab="log"><span class="ico">📋</span>成长记录</button>
+    <button class="tab" data-tab="parent"><span class="ico">👨‍👩‍👧</span>家长面板</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     Toast / 弹层容器
+     ============================================================ -->
+<div id="toast"></div>
+
+<div class="sheet-mask" id="sheetMask">
+  <div class="sheet" id="sheet">
+    <div class="sheet-head">
+      <div class="sheet-title" id="sheetTitle">标题</div>
+      <button class="sheet-close" id="sheetClose">✕</button>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+</div>
+
+<div class="overlay" id="celebration">
+  <div class="ov-art" id="celebrateArt"></div>
+  <div class="ov-title" id="celebrateTitle">太棒了！</div>
+  <div class="ov-sub" id="celebrateSub"></div>
+  <button class="btn btn-primary" id="celebrateBtn">好耶！🎉</button>
+</div>
+
+<div class="overlay" id="runaway">
+  <div class="rain" id="rainBox"></div>
+  <div class="ov-art" id="runawayArt"></div>
+  <div class="ov-title" id="runawayTitle">TA 离家出走了…</div>
+  <div class="ov-sub" id="runawaySub"></div>
+  <button class="btn btn-primary" id="runawayBtn">重新开始 💪</button>
+</div>
+
+<script>
+/* ============================================================
+   小小养成家 —— 核心逻辑
+   ============================================================ */
+"use strict";
+
+/* ---------- 常量 ---------- */
+const BASE_KEY = "petHabitGame.v1";
+
+/* 存档空间（重要）：
+   小程序 / 网盘 / 下载工具每次打开产物时，文件名和路径都可能变化，
+   因此不能只用文件名当唯一标识，否则会"看起来像存档被清空"（其实只是读不到）。
+
+   策略：
+   1) ?new=1  → 强制全新游戏（演示用，不落主档）
+   2) 设备上只有一份档案（最常见）→ 复用那一份，文件名怎么变都不丢
+   3) 设备上有多份档案 → 优先按文件名精确匹配；匹配不到则按"最近使用"认领
+   这样既能自动找回，又能支持同一设备多份档案共存。 */
+const SHARE_MODE = /(\?|&)new=1(&|$)/.test(location.search);
+
+function fileNameSlot(){
+  try{
+    const p = decodeURIComponent(location.pathname || "");
+    const fname = p.split("/").pop() || "";
+    return fname.replace(/\.(html?|htm)$/i, "").replace(/[^\w\u4e00-\u9fa5-]/g, "_") || "default";
+  }catch(e){ return "default"; }
+}
+
+const SAVE_SLOT = fileNameSlot();
+
+/* 枚举设备上所有主档案空间 */
+function listMainSaves(){
+  const out = [];
+  try{
+    for (let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if (!k || k.indexOf(BASE_KEY + "::") !== 0) continue;
+      if (k.indexOf(BASE_KEY + "::share::") === 0) continue;  // 跳过临时档
+      if (k.indexOf(BASE_KEY + "::__") === 0) continue;       // 跳过内部标记
+      if (k.indexOf("::backup::") >= 0) continue;             // 跳过备份
+      let meta = null;
+      try{ meta = JSON.parse(localStorage.getItem(k)); }catch(e){}
+      out.push({
+        key: k,
+        slot: k.slice((BASE_KEY + "::").length),
+        lastSeen: (meta && meta.lastSeen) ? meta.lastSeen : 0,
+        adopted: !!(meta && meta.adopted),
+        name: (meta && meta.petName) ? meta.petName : "",
+      });
+    }
+  }catch(e){}
+  return out;
+}
+
+/* 决定本次使用哪个存档空间
+   设计取舍：
+   - 保留"不同文件名 = 不同档案"（分享/多孩子共存的既定行为）
+   - 但若当前文件名没有档案、而设备上恰好有一份其他档案，
+     则进入"可找回"状态：先按全新游戏打开，同时提示用户可一键找回。
+     这样既不会自动串档，也不会像以前那样"看起来存档丢了"。 */
+const RESOLVED = (function(){
+  if (SHARE_MODE){
+    return { key: BASE_KEY + "::share::" + Date.now(), slot: "share", reason:"share" };
+  }
+  const saves = listMainSaves();
+
+  // 0) 用户手动指定过要使用哪一份（存档管理里切换）
+  let pinned = null;
+  try{ pinned = localStorage.getItem(BASE_KEY + "::__active__"); }catch(e){}
+  if (pinned && saves.some(s => s.key === pinned)){
+    const p = saves.find(s => s.key === pinned);
+    return { key: p.key, slot: p.slot, reason:"pinned" };
+  }
+
+  // 1) 文件名精确匹配 → 正常使用
+  const exact = saves.find(s => s.slot === SAVE_SLOT);
+  if (exact) return { key: exact.key, slot: exact.slot, reason:"exact" };
+
+  // 2) 没有匹配到。若设备上存在其他已领养档案 → 标记为"可找回"，但不自动认领
+  const adoptedSaves = saves.filter(s => s.adopted);
+  if (adoptedSaves.length >= 1){
+    adoptedSaves.sort((a,b)=> (b.lastSeen||0) - (a.lastSeen||0));
+    return {
+      key: BASE_KEY + "::" + SAVE_SLOT,   // 仍为新空间
+      slot: SAVE_SLOT,
+      reason: "orphan",
+      orphan: adoptedSaves[0],            // 供提示与一键找回
+      orphanCount: adoptedSaves.length,
+    };
+  }
+
+  // 3) 完全没有任何档案 → 新建
+  return { key: BASE_KEY + "::" + SAVE_SLOT, slot: SAVE_SLOT, reason:"new" };
+})();
+
+/* 一键找回：把目标存档迁移到当前文件名对应的空间下 */
+function claimSave(sourceKey){
+  try{
+    const raw = localStorage.getItem(sourceKey);
+    if (!raw) { toast("找不到那份存档了…"); return false; }
+
+    // 关键：上写锁，防止本页内存里的"默认状态"在 beforeunload/reload 时把刚找回的数据覆盖掉
+    wiping = true;
+    S = null;
+
+    localStorage.setItem(STORAGE_KEY, raw);
+
+    // 迁移成功后移除旧的键（避免重复认领）
+    if (sourceKey !== STORAGE_KEY && sourceKey.indexOf(BASE_KEY + "::share::") !== 0){
+      localStorage.removeItem(sourceKey);
+    }
+    localStorage.removeItem(BASE_KEY + "::__active__");
+    return true;
+  }catch(e){ console.warn("找回失败", e); return false; }
+}
+
+const STORAGE_KEY = RESOLVED.key;
+const TICK_MS = 1000;
+
+/* 时间单位：为了让孩子"看得见变化"，一天按真实一个自然日算。
+   饥饿值每小时下降，一天不喂就到危险区。 */
+const HUNGER_PER_HOUR = 4.6;      // 每小时掉 4.6 饱食度 → 约 21.7h 从满到 0
+const MOOD_PER_HOUR   = 2.2;      // 心情每小时自然回落
+const TICK_HUNGER     = HUNGER_PER_HOUR / 3600;
+const TICK_MOOD       = MOOD_PER_HOUR / 3600;
+
+/* 阶段：离家出走的"温和"三级预警 */
+const STAGE_OK        = 0;   // 正常
+const STAGE_HUNGRY    = 1;   // 饿了（<45）：提醒
+const STAGE_MALNOUR   = 2;   // 营养不良（<20）：明确警告，动物生病
+const STAGE_LEAVING   = 3;   // 想离家（<8 持续一段时间）
+const STAGE_GONE      = 4;   // 已离家出走
+
+const LEAVE_GRACE_MS  = 6 * 3600 * 1000;  // 饱食度 <8 后，还有 6 小时抢救时间
+
+/* 喂养食物：价格 / 恢复饱食 / 恢复心情 / 描述 */
+const FOODS = [
+  { id:"kibble",  ico:"🥣", name:"营养主粮", price:5,  hunger:26, mood:4,  desc:"最划算的日常口粮" },
+  { id:"apple",   ico:"🍎", name:"新鲜苹果", price:8,  hunger:22, mood:12, desc:"甜甜的，心情变好" },
+  { id:"milk",    ico:"🥛", name:"温热牛奶", price:10, hunger:20, mood:14, desc:"睡前一杯暖暖的" },
+  { id:"carrot",  ico:"🥕", name:"脆脆胡萝卜", price:6, hunger:18, mood:6, desc:"健康又便宜" },
+  { id:"cake",    ico:"🍰", name:"节日小蛋糕", price:16, hunger:38, mood:22, desc:"大餐！饱食度大涨" },
+  { id:"treat",   ico:"🍬", name:"奖励小零食", price:3,  hunger:7,  mood:9,  desc:"解馋，但不太顶饱" },
+];
+
+/* 默认行为库：pos=加分  neg=扣分 */
+const DEFAULT_BEHAVIORS = {
+  pos: [
+    { id:"p1", ico:"🛏️", name:"整理自己的房间", desc:"被子叠好、玩具归位", pts:5  },
+    { id:"p2", ico:"🧹", name:"打扫卫生",       desc:"扫地、擦桌子",         pts:5  },
+    { id:"p3", ico:"📦", name:"帮大人取快递",   desc:"主动帮忙跑腿",         pts:4  },
+    { id:"p4", ico:"🗑️", name:"倒垃圾",         desc:"记得套好垃圾袋",       pts:4  },
+    { id:"p5", ico:"📚", name:"认真完成作业",   desc:"按时、字迹工整",       pts:6  },
+    { id:"p6", ico:"🦷", name:"早晚认真刷牙",   desc:"刷满两分钟",           pts:5  },
+    { id:"p7", ico:"🍽️", name:"主动帮忙摆碗筷", desc:"吃饭前搭把手",         pts:4  },
+    { id:"p8", ico:"👕", name:"自己穿衣服",     desc:"不用大人催",           pts:3  },
+    { id:"p9", ico:"📖", name:"阅读 20 分钟",   desc:"绘本或分级读物",       pts:5  },
+    { id:"p10", ico:"🗣️", name:"主动说礼貌用语", desc:"谢谢 / 对不起 / 请",  pts:3  },
+    { id:"p11", ico:"💧", name:"喝够了水",       desc:"一天六杯水",           pts:3  },
+    { id:"p12", ico:"🐕", name:"照顾小动物",     desc:"看看 TA 饿不饿",       pts:4  },
+  ],
+  neg: [
+    { id:"n1", ico:"😤", name:"莫名发脾气",       desc:"大喊大叫、摔东西",   pts:-5 },
+    { id:"n2", ico:"🐢", name:"吃饭拖拉",         desc:"一顿饭吃超过 1 小时", pts:-4 },
+    { id:"n3", ico:"🥦", name:"挑食",             desc:"把蔬菜全挑出来",     pts:-4 },
+    { id:"n4", ico:"🤬", name:"说脏话",           desc:"说了不好听的话",     pts:-8 },
+    { id:"n5", ico:"📱", name:"偷玩电子产品",     desc:"超过了约定时间",     pts:-6 },
+    { id:"n6", ico:"😾", name:"对大人没礼貌",     desc:"顶嘴、翻白眼",       pts:-5 },
+    { id:"n7", ico:"🧸", name:"乱扔东西不收拾",   desc:"玩具丢一地",         pts:-4 },
+    { id:"n8", ico:"🌙", name:"不肯按时睡觉",     desc:"赖着不洗漱",         pts:-4 },
+    { id:"n9", ico:"🤥", name:"说谎话",           desc:"瞒着大人做事",       pts:-7 },
+    { id:"n10", ico:"👊", name:"动手打人",        desc:"推搡、打小朋友",     pts:-9 },
+  ],
+};
+
+/* ============================================================
+   动物 SVG 美术（圆润卡通风）
+   每个动物是一个函数：mood = happy | normal | sad | sick
+   返回 200x200 viewBox 的 SVG 字符串
+   ============================================================ */
+
+const PETS = {
+  dog: {
+    name:"小狗", tag:"忠诚黏人", emoji:"🐶",
+    body:"#E8B07A", dark:"#D1955C", light:"#F7D9B0", accent:"#8B5E3C", belly:"#FDF0DE",
+    intro:"汪汪！我最喜欢和你一起玩啦！"
+  },
+  cat: {
+    name:"小猫", tag:"傲娇软萌", emoji:"🐱",
+    body:"#B9BCC7", dark:"#9DA1AF", light:"#DDE0E7", accent:"#F2A3B0", belly:"#F5F6F9",
+    intro:"喵～别摸太久哦，我可是很忙的。"
+  },
+  fish: {
+    name:"小鱼", tag:"安静治愈", emoji:"🐟",
+    body:"#FFB347", dark:"#F09819", light:"#FFD79A", accent:"#E97430", belly:"#FFF0D6",
+    intro:"咕噜咕噜…水里好舒服呀。"
+  },
+  rabbit: {
+    name:"小兔", tag:"胆小亲人", emoji:"🐰",
+    body:"#F5F0EA", dark:"#DED5CB", light:"#FFFFFF", accent:"#F5AFC0", belly:"#FFFCF8",
+    intro:"你好…可以轻轻摸摸我吗？"
+  },
+  hamster: {
+    name:"仓鼠", tag:"吃货开心果", emoji:"🐹",
+    body:"#E9A96B", dark:"#D08F51", light:"#F8DDB8", accent:"#F2A0AA", belly:"#FDF1DE",
+    intro:"有吃的吗？我腮帮子还能装好多！"
+  },
+  lizard: {
+    name:"蜥蜴", tag:"酷酷慢热", emoji:"🦎",
+    body:"#7FBF6A", dark:"#5E9E4C", light:"#AFDCA0", accent:"#F5C542", belly:"#E8F5DF",
+    intro:"嘶嘶…别怕，我其实很温柔。"
+  },
+};
+
+/* 眼睛通用生成器 */
+function eyes(mood, cx1, cx2, cy, r){
+  const R = r || 9;
+  let eyePath = "";
+  if (mood === "sad" || mood === "sick"){
+    // 难过：眼睛下弯 + 下垂眉毛
+    eyePath =
+      `<ellipse cx="${cx1}" cy="${cy}" rx="${R}" ry="${R*0.92}" fill="#3A3226"/>` +
+      `<ellipse cx="${cx2}" cy="${cy}" rx="${R}" ry="${R*0.92}" fill="#3A3226"/>` +
+      `<circle cx="${cx1+R*0.32}" cy="${cy-R*0.34}" r="${R*0.34}" fill="#fff"/>` +
+      `<circle cx="${cx2+R*0.32}" cy="${cy-R*0.34}" r="${R*0.34}" fill="#fff"/>`;
+  } else if (mood === "happy"){
+    // 开心：弯弯的笑眼
+    eyePath =
+      `<path d="M${cx1-R},${cy+2} Q${cx1},${cy-R*1.05} ${cx1+R},${cy+2}" stroke="#3A3226" stroke-width="${R*0.55}" fill="none" stroke-linecap="round"/>` +
+      `<path d="M${cx2-R},${cy+2} Q${cx2},${cy-R*1.05} ${cx2+R},${cy+2}" stroke="#3A3226" stroke-width="${R*0.55}" fill="none" stroke-linecap="round"/>`;
+  } else {
+    // 普通：大圆眼 + 眨眼动画
+    eyePath =
+      `<g class="blink">` +
+      `<ellipse cx="${cx1}" cy="${cy}" rx="${R}" ry="${R*1.08}" fill="#3A3226"/>` +
+      `<ellipse cx="${cx2}" cy="${cy}" rx="${R}" ry="${R*1.08}" fill="#3A3226"/>` +
+      `<circle cx="${cx1+R*0.34}" cy="${cy-R*0.38}" r="${R*0.4}" fill="#fff"/>` +
+      `<circle cx="${cx2+R*0.34}" cy="${cy-R*0.38}" r="${R*0.4}" fill="#fff"/>` +
+      `<circle cx="${cx1-R*0.3}" cy="${cy+R*0.42}" r="${R*0.19}" fill="#fff" opacity=".8"/>` +
+      `<circle cx="${cx2-R*0.3}" cy="${cy+R*0.42}" r="${R*0.19}" fill="#fff" opacity=".8"/>` +
+      `</g>`;
+  }
+  return eyePath;
+}
+
+/* 难过/生病时的眉毛：外高内低（八字眉），传达委屈而非生气 */
+function brows(mood, cx1, cx2, cy, w){
+  if (mood !== "sad" && mood !== "sick") return "";
+  const W = w || 12;
+  const c = "#5A4A38";
+  // 左眉：左端低、右端高（靠近鼻梁处略高）→ 委屈下垂感
+  return `<path d="M${cx1-W*0.9},${cy+3} Q${cx1-W*0.1},${cy-2} ${cx1+W*0.75},${cy-3}" stroke="${c}" stroke-width="3" fill="none" stroke-linecap="round" opacity=".9"/>` +
+         `<path d="M${cx2+W*0.9},${cy+3} Q${cx2+W*0.1},${cy-2} ${cx2-W*0.75},${cy-3}" stroke="${c}" stroke-width="3" fill="none" stroke-linecap="round" opacity=".9"/>`;
+}
+
+/* 嘴巴 */
+function mouth(mood, cx, cy, w){
+  const W = w || 13;
+  if (mood === "happy"){
+    return `<path d="M${cx-W},${cy-2} Q${cx},${cy+W*0.92} ${cx+W},${cy-2}" stroke="#5A4A38" stroke-width="3.4" fill="none" stroke-linecap="round"/>` +
+           `<path d="M${cx-W*0.85},${cy-1} Q${cx},${cy+W*0.55} ${cx+W*0.85},${cy-1} Z" fill="${"#F58AA0"}" opacity=".55"/>`;
+  }
+  if (mood === "sad"){
+    return `<path d="M${cx-W*0.8},${cy+4} Q${cx},${cy-3} ${cx+W*0.8},${cy+4}" stroke="#5A4A38" stroke-width="3.2" fill="none" stroke-linecap="round"/>`;
+  }
+  if (mood === "sick"){
+    return `<path d="M${cx-W*0.7},${cy+3} L${cx+W*0.7},${cy+3}" stroke="#5A4A38" stroke-width="3.2" stroke-linecap="round"/>`;
+  }
+  return `<path d="M${cx-W*0.55},${cy} Q${cx},${cy+W*0.62} ${cx+W*0.55},${cy}" stroke="#5A4A38" stroke-width="3.2" fill="none" stroke-linecap="round"/>`;
+}
+
+/* 腮红 */
+function blush(cx1, cx2, cy, c){
+  const col = c || "#F58AA0";
+  return `<ellipse cx="${cx1}" cy="${cy}" rx="10.5" ry="7" fill="${col}" opacity=".38"/>` +
+         `<ellipse cx="${cx2}" cy="${cy}" rx="10.5" ry="7" fill="${col}" opacity=".38"/>`;
+}
+
+/* ---------- 小狗 ---------- */
+function svgDog(mood, t){ /* t = 0..1 用于尾巴方向 */
+  const c = PETS.dog;
+  const droop = (mood==="sad"||mood==="sick");
+  const earDY = droop ? 5 : 0;
+  const earRot = droop ? 10 : 16;
+  return `
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <!-- 尾巴 -->
+    <g class="tail" style="transform-origin:150px 128px">
+      <path d="M148,126 Q172,112 176,86 Q178,74 168,76 Q158,82 154,102 Q151,116 143,124 Z"
+            fill="${c.dark}"/>
+    </g>
+    <!-- 后腿 -->
+    <ellipse cx="62" cy="158" rx="19" ry="24" fill="${c.dark}"/>
+    <ellipse cx="138" cy="158" rx="19" ry="24" fill="${c.dark}"/>
+    <!-- 身体 -->
+    <ellipse cx="100" cy="126" rx="53" ry="45" fill="${c.body}"/>
+    <ellipse cx="100" cy="136" rx="34" ry="29" fill="${c.belly}"/>
+    <!-- 前爪 -->
+    <ellipse cx="74" cy="166" rx="17" ry="12" fill="${c.light}"/>
+    <ellipse cx="126" cy="166" rx="17" ry="12" fill="${c.light}"/>
+    <!-- 耳朵 -->
+    <ellipse cx="48" cy="${70+earDY}" rx="17" ry="30" fill="${c.dark}" transform="rotate(-${earRot} 48 ${70+earDY})"/>
+    <ellipse cx="152" cy="${70+earDY}" rx="17" ry="30" fill="${c.dark}" transform="rotate(${earRot} 152 ${70+earDY})"/>
+    <!-- 头 -->
+    <ellipse cx="100" cy="78" rx="47" ry="44" fill="${c.body}"/>
+    <!-- 头顶高光 -->
+    <ellipse cx="86" cy="46" rx="21" ry="12" fill="${c.light}" opacity=".65"/>
+    <!-- 口鼻区 -->
+    <ellipse cx="100" cy="96" rx="27" ry="20" fill="${c.light}"/>
+    <!-- 眼睛 -->
+    ${eyes(mood, 82, 118, 72, 9.5)}
+    ${brows(mood, 82, 118, 60, 11)}
+    <!-- 鼻子 -->
+    <ellipse cx="100" cy="88" rx="8.5" ry="6.8" fill="#3A3226"/>
+    <ellipse cx="97.5" cy="86" rx="2.6" ry="1.9" fill="#fff" opacity=".55"/>
+    <!-- 嘴 -->
+    ${mouth(mood, 100, 104, 12)}
+    ${mood==="happy" ? blush(62,138,88) : ""}
+    <!-- 舌头 -->
+    ${mood==="happy" ? `<path d="M95,110 Q100,124 105,110 Z" fill="#F58AA0"/>` : ""}
+    ${mood==="sick" ? `<ellipse cx="100" cy="30" rx="13" ry="4.5" fill="#B9D9F0" opacity=".85"/>` : ""}
+  </g>
+</svg>`;
+}
+
+/* ---------- 小猫 ---------- */
+function svgCat(mood){
+  const c = PETS.cat;
+  const earTilt = (mood==="sad"||mood==="sick") ? 10 : 0;
+  return `
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <!-- 尾巴 -->
+    <g class="tail" style="transform-origin:152px 138px">
+      <path d="M150,140 Q184,134 180,104 Q178,90 170,94 Q166,98 168,112 Q170,134 148,148 Z"
+            fill="${c.body}"/>
+    </g>
+    <!-- 后腿/身体 -->
+    <ellipse cx="100" cy="132" rx="50" ry="43" fill="${c.body}"/>
+    <ellipse cx="100" cy="142" rx="30" ry="26" fill="${c.belly}"/>
+    <!-- 前爪 -->
+    <ellipse cx="76" cy="166" rx="16" ry="11" fill="${c.light}"/>
+    <ellipse cx="124" cy="166" rx="16" ry="11" fill="${c.light}"/>
+    <!-- 耳朵 -->
+    <path d="M56,54 L48,14 L86,38 Z" fill="${c.body}" transform="rotate(-${earTilt} 56 54)"/>
+    <path d="M60,50 L55,25 L80,39 Z" fill="${c.accent}" opacity=".75" transform="rotate(-${earTilt} 56 54)"/>
+    <path d="M144,54 L152,14 L114,38 Z" fill="${c.body}" transform="rotate(${earTilt} 144 54)"/>
+    <path d="M140,50 L145,25 L120,39 Z" fill="${c.accent}" opacity=".75" transform="rotate(${earTilt} 144 54)"/>
+    <!-- 头 -->
+    <ellipse cx="100" cy="80" rx="48" ry="43" fill="${c.body}"/>
+    <ellipse cx="84" cy="50" rx="20" ry="11" fill="${c.light}" opacity=".7"/>
+    <!-- 眼睛 -->
+    ${eyes(mood, 80, 120, 76, 10)}
+    ${brows(mood, 80, 120, 63, 11)}
+    <!-- 鼻子+嘴 -->
+    <path d="M96,92 L104,92 L100,97 Z" fill="${c.accent}"/>
+    <path d="M100,97 Q93,105 87,99" stroke="#5A4A38" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+    <path d="M100,97 Q107,105 113,99" stroke="#5A4A38" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+    ${mood==="happy" ? bladeCatHappy() : ""}
+    <!-- 胡须 -->
+    <g stroke="#9AA0AC" stroke-width="2" stroke-linecap="round" opacity=".7">
+      <path d="M52,86 L26,80"/><path d="M52,94 L26,96"/>
+      <path d="M148,86 L174,80"/><path d="M148,94 L174,96"/>
+    </g>
+    ${mood==="happy" ? blush(60,140,92,"#E8738F") : ""}
+    ${mood==="sick" ? `<ellipse cx="100" cy="32" rx="13" ry="4.5" fill="#B9D9F0" opacity=".85"/>` : ""}
+  </g>
+</svg>`;
+}
+function bladeCatHappy(){ return `<path d="M92,104 Q100,112 108,104" stroke="#5A4A38" stroke-width="2.6" fill="none" stroke-linecap="round"/>`; }
+
+/* ---------- 小鱼（圆形金鱼） ---------- */
+function svgFish(mood){
+  const c = PETS.fish;
+  const happy = mood==="happy";
+  return `
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <!-- 尾鳍 -->
+    <g class="tail" style="transform-origin:132px 104px">
+      <path d="M130,104 Q166,72 178,84 Q166,104 178,124 Q166,136 130,104 Z" fill="${c.accent}" opacity=".92"/>
+    </g>
+    <!-- 背鳍 -->
+    <path d="M88,54 Q100,30 118,58 Q104,64 88,54 Z" fill="${c.dark}"/>
+    <!-- 腹鳍 -->
+    <path d="M86,152 Q100,172 116,150 Q100,144 86,152 Z" fill="${c.dark}" opacity=".85"/>
+    <!-- 身体 -->
+    <ellipse cx="92" cy="104" rx="54" ry="49" fill="${c.body}"/>
+    <ellipse cx="92" cy="116" rx="36" ry="31" fill="${c.belly}" opacity=".9"/>
+    <!-- 侧鳍 -->
+    <ellipse cx="86" cy="120" rx="17" ry="11" fill="${c.light}" opacity=".85" transform="rotate(-18 86 120)"/>
+    <!-- 鳞片纹 -->
+    <g stroke="${c.dark}" stroke-width="1.6" fill="none" opacity=".35">
+      <path d="M64,92 q8,-7 16,0"/><path d="M84,84 q8,-7 16,0"/>
+      <path d="M74,110 q8,-7 16,0"/><path d="M94,102 q8,-7 16,0"/>
+    </g>
+    <!-- 眼睛（小鱼眼睛略大） -->
+    ${eyes(mood, 64, 64, 88, 0) === "" ? "" : ""}
+    <ellipse cx="66" cy="88" rx="12" ry="12.5" fill="#fff"/>
+    <ellipse cx="67" cy="88" rx="8.4" ry="9" fill="#3A3226"/>
+    <circle cx="69.6" cy="84.6" r="3.2" fill="#fff"/>
+    ${(mood==="sad"||mood==="sick") ? `<path d="M56,76 L76,80" stroke="#5A4A38" stroke-width="3" stroke-linecap="round"/>` : ""}
+    <!-- 嘴 -->
+    ${mood==="happy"
+      ? `<ellipse cx="46" cy="106" rx="7" ry="6" fill="${c.accent}"/><path d="M42,102 Q46,110 50,102" stroke="#B25E00" stroke-width="1.8" fill="none"/>`
+      : `<path d="M42,105 Q47,110 52,105" stroke="${c.accent}" stroke-width="2.8" fill="none" stroke-linecap="round"/>`}
+    ${mood==="happy" ? `<ellipse cx="76" cy="116" rx="10" ry="6.5" fill="#F58AA0" opacity=".35"/>` : ""}
+    <!-- 气泡 -->
+    <g opacity=".8" class="bubbles">
+      <circle cx="36" cy="64" r="5" fill="#fff" opacity=".75"/>
+      <circle cx="26" cy="46" r="3.4" fill="#fff" opacity=".6"/>
+    </g>
+    ${mood==="sick" ? `<ellipse cx="92" cy="46" rx="13" ry="4.5" fill="#B9D9F0" opacity=".8"/>` : ""}
+  </g>
+</svg>`;
+}
+
+/* ---------- 小兔 ---------- */
+function svgRabbit(mood){
+  const c = PETS.rabbit;
+  const droop = (mood==="sad"||mood==="sick");
+  const earRot = droop ? 26 : 0;
+  return `
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <!-- 尾巴 -->
+    <circle cx="146" cy="146" r="15" fill="${c.light}" class="tail"/>
+    <!-- 身体 -->
+    <ellipse cx="100" cy="134" rx="48" ry="42" fill="${c.body}"/>
+    <ellipse cx="100" cy="144" rx="30" ry="25" fill="${c.belly}"/>
+    <!-- 脚 -->
+    <ellipse cx="76" cy="167" rx="17" ry="11" fill="${c.light}"/>
+    <ellipse cx="124" cy="167" rx="17" ry="11" fill="${c.light}"/>
+    <!-- 耳朵 -->
+    <g transform="rotate(-${earRot} 74 48)">
+      <ellipse cx="74" cy="34" rx="12.5" ry="38" fill="${c.body}"/>
+      <ellipse cx="74" cy="36" rx="6.5" ry="28" fill="${c.accent}"/>
+    </g>
+    <g transform="rotate(${earRot} 126 48)">
+      <ellipse cx="126" cy="34" rx="12.5" ry="38" fill="${c.body}"/>
+      <ellipse cx="126" cy="36" rx="6.5" ry="28" fill="${c.accent}"/>
+    </g>
+    <!-- 头 -->
+    <ellipse cx="100" cy="90" rx="45" ry="40" fill="${c.body}"/>
+    <ellipse cx="86" cy="62" rx="19" ry="10" fill="${c.light}" opacity=".8"/>
+    <!-- 眼睛 -->
+    ${eyes(mood, 81, 119, 86, 9.5)}
+    ${brows(mood, 81, 119, 73, 10.5)}
+    <!-- 鼻子/嘴 -->
+    <ellipse cx="100" cy="102" rx="5.6" ry="4.4" fill="${c.accent}"/>
+    <path d="M100,106 Q94,113 89,108" stroke="#8A8078" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+    <path d="M100,106 Q106,113 111,108" stroke="#8A8078" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+    ${mood==="happy" ? `<path d="M95,112 Q100,118 105,112" stroke="#8A8078" stroke-width="2.4" fill="none" stroke-linecap="round"/>` : ""}
+    ${mood==="happy" ? blush(62,138,104,"#F58AA0") : ""}
+    <!-- 兔牙 -->
+    <rect x="96.5" y="113" width="3.2" height="7" rx="1.5" fill="#fff" stroke="#E0D8CE" stroke-width=".8"/>
+    <rect x="100.3" y="113" width="3.2" height="7" rx="1.5" fill="#fff" stroke="#E0D8CE" stroke-width=".8"/>
+    ${mood==="sick" ? `<ellipse cx="100" cy="42" rx="13" ry="4.5" fill="#B9D9F0" opacity=".85"/>` : ""}
+  </g>
+</svg>`;
+}
+
+/* ---------- 仓鼠 ---------- */
+function svgHamster(mood){
+  const c = PETS.hamster;
+  const happy = mood==="happy";
+  return `
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <!-- 尾巴（小圆球） -->
+    <circle cx="146" cy="140" r="10" fill="${c.dark}" class="tail"/>
+    <!-- 身体（胖圆） -->
+    <ellipse cx="100" cy="130" rx="56" ry="48" fill="${c.body}"/>
+    <ellipse cx="100" cy="142" rx="38" ry="32" fill="${c.belly}"/>
+    <!-- 脚 -->
+    <ellipse cx="70" cy="170" rx="15" ry="10" fill="${c.light}"/>
+    <ellipse cx="130" cy="170" rx="15" ry="10" fill="${c.light}"/>
+    <!-- 小爪子 -->
+    <circle cx="86" cy="152" r="8" fill="${c.light}"/>
+    <circle cx="114" cy="152" r="8" fill="${c.light}"/>
+    <!-- 耳朵 -->
+    <circle cx="56" cy="60" r="14" fill="${c.dark}"/>
+    <circle cx="56" cy="61" r="7.5" fill="${c.accent}" opacity=".7"/>
+    <circle cx="144" cy="60" r="14" fill="${c.dark}"/>
+    <circle cx="144" cy="61" r="7.5" fill="${c.accent}" opacity=".7"/>
+    <!-- 头 -->
+    <ellipse cx="100" cy="88" rx="50" ry="45" fill="${c.body}"/>
+    <ellipse cx="84" cy="56" rx="20" ry="11" fill="${c.light}" opacity=".7"/>
+    <!-- 腮帮（标志性） -->
+    <ellipse cx="62" cy="104" rx="18" ry="15" fill="${c.light}" opacity=".9"/>
+    <ellipse cx="138" cy="104" rx="18" ry="15" fill="${c.light}" opacity=".9"/>
+    ${happy ? `<ellipse cx="62" cy="104" rx="18" ry="15" fill="#F58AA0" opacity=".22"/><ellipse cx="138" cy="104" rx="18" ry="15" fill="#F58AA0" opacity=".22"/>` : ""}
+    <!-- 眼睛 -->
+    ${eyes(mood, 82, 118, 84, 9.5)}
+    ${brows(mood, 82, 118, 71, 10.5)}
+    <!-- 鼻子/嘴 -->
+    <ellipse cx="100" cy="99" rx="5.4" ry="4.2" fill="#C4756F"/>
+    <path d="M100,103 L100,108" stroke="#8A8078" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M100,108 Q95,113 90,108" stroke="#8A8078" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <path d="M100,108 Q105,113 110,108" stroke="#8A8078" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <!-- 胡须 -->
+    <g stroke="#C4B8A8" stroke-width="1.9" stroke-linecap="round" opacity=".8">
+      <path d="M60,96 L36,90"/><path d="M60,103 L36,104"/>
+      <path d="M140,96 L164,90"/><path d="M140,103 L164,104"/>
+    </g>
+    <!-- 拿着的小瓜子 -->
+    ${happy ? `<ellipse cx="100" cy="158" rx="7" ry="9" fill="#C9A66B" transform="rotate(12 100 158)"/>` : ""}
+    ${mood==="sick" ? `<ellipse cx="100" cy="40" rx="13" ry="4.5" fill="#B9D9F0" opacity=".85"/>` : ""}
+  </g>
+</svg>`;
+}
+
+/* ---------- 蜥蜴 ---------- */
+function svgLizard(mood){
+  const c = PETS.lizard;
+  const happy = mood==="happy";
+  return `
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <!-- 尾巴（长而卷） -->
+    <g class="tail" style="transform-origin:142px 132px">
+      <path d="M140,130 Q176,126 180,150 Q182,172 164,174 Q152,175 154,164 Q156,155 166,154"
+            stroke="${c.dark}" stroke-width="15" fill="none" stroke-linecap="round"/>
+    </g>
+    <!-- 后腿 -->
+    <ellipse cx="66" cy="156" rx="17" ry="20" fill="${c.dark}" transform="rotate(-14 66 156)"/>
+    <ellipse cx="136" cy="156" rx="17" ry="20" fill="${c.dark}" transform="rotate(14 136 156)"/>
+    <!-- 身体 -->
+    <ellipse cx="100" cy="124" rx="52" ry="42" fill="${c.body}"/>
+    <ellipse cx="100" cy="134" rx="34" ry="28" fill="${c.belly}"/>
+    <!-- 背脊小刺 -->
+    <g fill="${c.accent}">
+      <path d="M76,86 L82,72 L88,86 Z"/>
+      <path d="M92,82 L100,66 L108,82 Z"/>
+      <path d="M112,86 L118,72 L124,86 Z"/>
+    </g>
+    <!-- 前爪 -->
+    <ellipse cx="72" cy="164" rx="16" ry="10" fill="${c.light}"/>
+    <ellipse cx="128" cy="164" rx="16" ry="10" fill="${c.light}"/>
+    <g stroke="${c.dark}" stroke-width="3" stroke-linecap="round">
+      <path d="M60,168 L54,174"/><path d="M68,171 L64,178"/><path d="M76,171 L78,178"/>
+      <path d="M140,168 L146,174"/><path d="M132,171 L136,178"/><path d="M124,171 L122,178"/>
+    </g>
+    <!-- 头 -->
+    <ellipse cx="100" cy="76" rx="46" ry="40" fill="${c.body}"/>
+    <ellipse cx="88" cy="48" rx="20" ry="10" fill="${c.light}" opacity=".6"/>
+    <!-- 头顶鳞片纹 -->
+    <g stroke="${c.dark}" stroke-width="1.6" fill="none" opacity=".4">
+      <path d="M74,62 q9,-7 18,0"/><path d="M98,58 q9,-7 18,0"/>
+    </g>
+    <!-- 眼睛（大而鼓，有竖瞳） -->
+    <ellipse cx="80" cy="74" rx="14" ry="14" fill="#FFF8DC"/>
+    <ellipse cx="120" cy="74" rx="14" ry="14" fill="#FFF8DC"/>
+    ${(mood==="sad"||mood==="sick") ? `
+      <ellipse cx="80" cy="76" rx="9" ry="9" fill="#3A3226"/>
+      <ellipse cx="120" cy="76" rx="9" ry="9" fill="#3A3226"/>
+      <path d="M66,62 L90,66" stroke="#5A4A38" stroke-width="3" stroke-linecap="round"/>
+      <path d="M134,62 L110,66" stroke="#5A4A38" stroke-width="3" stroke-linecap="round"/>
+    ` : happy ? `
+      <path d="M68,74 Q80,64 92,74" stroke="#3A3226" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M108,74 Q120,64 132,74" stroke="#3A3226" stroke-width="4" fill="none" stroke-linecap="round"/>
+    ` : `
+      <ellipse cx="80" cy="74" rx="10.5" ry="12" fill="#3A3226"/>
+      <rect x="78.6" y="65" width="3" height="18" rx="1.5" fill="#F5C542"/>
+      <ellipse cx="120" cy="74" rx="10.5" ry="12" fill="#3A3226"/>
+      <rect x="118.6" y="65" width="3" height="18" rx="1.5" fill="#F5C542"/>
+      <circle cx="83" cy="69" r="3.4" fill="#fff" opacity=".9"/>
+      <circle cx="123" cy="69" r="3.4" fill="#fff" opacity=".9"/>
+    `}
+    <!-- 嘴（长吻） -->
+    <path d="M76,94 Q100,106 124,94" stroke="#4E8A3E" stroke-width="3" fill="none" stroke-linecap="round"/>
+    ${happy ? `
+      <path d="M74,92 Q100,112 126,92" stroke="#4E8A3E" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+      <path d="M88,100 Q100,116 112,100 Z" fill="#F58AA0" opacity=".6"/>
+    ` : ""}
+    <!-- 吐信子 -->
+    ${(mood==="happy"||mood==="normal") ? `<g class="tongue"><path d="M100,104 L100,118 M100,118 L94,124 M100,118 L106,124" stroke="#E97A96" stroke-width="2.6" fill="none" stroke-linecap="round"/></g>` : ""}
+    ${mood==="sick" ? `<ellipse cx="100" cy="34" rx="13" ry="4.5" fill="#B9D9F0" opacity=".85"/>` : ""}
+  </g>
+</svg>`;
+}
+
+const SVG_BUILDERS = {
+  dog: svgDog, cat: svgCat, fish: svgFish,
+  rabbit: svgRabbit, hamster: svgHamster, lizard: svgLizard,
+};
+
+function buildPetSVG(kind, mood){
+  const fn = SVG_BUILDERS[kind] || svgDog;
+  return fn(mood);
+}
+
+/* ============================================================
+   状态 & 存档
+   ============================================================ */
+let S = null;          // 当前存档
+let lastTick = 0;      // 上次结算时间戳
+let tickTimer = null;  // 心跳计时器
+let uiLock = false;    // 弹层锁
+let wiping = false;    // 正在清档：此期间禁止任何写盘，防止 beforeunload 把旧数据写回
+let chosenKind = null; // 领养页当前选中的动物
+let activeTab = "home";
+let previewTimer = null;
+
+function defaultState(){
+  return {
+    version: 1,
+    adopted: false,
+    kind: "dog",
+    petName: "小可爱",
+    createdAt: Date.now(),
+    lastSeen: Date.now(),
+
+    score: 0,            // 累计积分（可花）
+    totalEarned: 0,      // 历史总收入
+    coins: 12,           // 初始金币（新手礼包）
+    hunger: 100,         // 饱食度 0-100
+    mood: 100,           // 心情 0-100
+    stage: STAGE_OK,     // 当前阶段
+    starvingSince: null, // 进入"想离家"的时间戳
+    goneAt: null,        // 离家出走时间
+
+    bag: {},             // { foodId: qty }
+    behaviors: {
+      pos: DEFAULT_BEHAVIORS.pos.map(x=>({...x})),
+      neg: DEFAULT_BEHAVIORS.neg.map(x=>({...x})),
+    },
+    logs: [],            // 行为记录
+    feedLogs: [],        // 喂养记录
+    daysAlive: 0,
+    lastDayStamp: new Date().toDateString(),
+    streak: 0,           // 连续有好行为的天数
+    lastStreakStamp: null,
+    bestScore: 0,
+    candyGiven: 0,       // 累计喂食次数
+    celebratedLevels: [],// 已庆祝过的里程碑
+    lastBondGiftStamp: null, // 上次心情满值礼物的日期（每天最多 1 次）
+    bondGiftCount: 0,    // 累计收到心情礼物的次数
+    sound: true,
+    pin: "",             // 家长 PIN（空=未设置）
+    pinEnabled: false,
+    lastLeaveStageAt: null,
+    warningsShown: {},
+  };
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    const base = defaultState();
+    // 深合并，保证新增字段有默认值
+    const merged = {
+      ...base, ...parsed,
+      behaviors: {
+        pos: (parsed.behaviors && parsed.behaviors.pos) ? parsed.behaviors.pos : base.behaviors.pos,
+        neg: (parsed.behaviors && parsed.behaviors.neg) ? parsed.behaviors.neg : base.behaviors.neg,
+      },
+      bag: { ...(parsed.bag||{}) },
+    };
+    return merged;
+  }catch(e){
+    console.warn("存档读取失败，使用新存档", e);
+    return defaultState();
+  }
+}
+
+function save(){
+  if (!S) return;
+  if (wiping) return;          // 清档过程中绝不写盘
+  S.lastSeen = Date.now();
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+  }catch(e){
+    console.warn("存档保存失败", e);
+  }
+}
+
+/* 清空当前存档空间（精确匹配，绝不动其他档案） */
+function clearSave(){
+  wiping = true;                // 先上锁，杜绝后续任何写回
+  try{
+    // 只删本存档空间自己的键：精确等值匹配，避免误伤名字相似的档案
+    localStorage.removeItem(BASE_KEY + "::" + SAVE_SLOT);
+    if (SHARE_MODE) localStorage.removeItem(STORAGE_KEY);
+  }catch(e){ console.warn("清档失败", e); }
+  S = null;                     // 内存态也一并丢弃
+  return true;
+}
+
+/* 把所有存档空间列出来（调试/迁移用） */
+function listSaves(){
+  const out = [];
+  try{
+    for (let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if (k && k.indexOf(BASE_KEY + "::") === 0){
+        let ok = false, meta = null;
+        try{ meta = JSON.parse(localStorage.getItem(k)); ok = !!meta; }catch(e){}
+        out.push({
+          key: k,
+          slot: k.slice((BASE_KEY + "::").length),
+          name: meta ? meta.petName : "?",
+          adopted: meta ? !!meta.adopted : false,
+          savedAt: meta ? meta.lastSeen : null,
+          current: k === STORAGE_KEY,
+        });
+      }
+    }
+  }catch(e){}
+  return out;
+}
+
+/* 回到最初的领养界面（不刷新页面，避免任何回写竞争） */
+function backToAdopt(){
+  try{ clearInterval(tickTimer); }catch(e){}
+  tickTimer = null;
+  closeSheet();
+  activeTab = "home";
+  renderTabs();
+
+  // 重置界面状态
+  chosenKind = null;
+  const inp = $("petNameInput");
+  if (inp) inp.value = "";
+  const qn = $("quickNames");
+  if (qn) qn.innerHTML = "";
+  const sub = document.querySelector(".adopt-sub");
+  if (sub) sub.textContent = "选一只小动物，给它起个名字吧！";
+  const grid = $("petGrid");
+  if (grid) grid.querySelectorAll(".pet-card").forEach(el=>el.classList.remove("selected"));
+
+  // 清掉残留的覆盖层 / 特效
+  ["celebration","runaway"].forEach(id=>{
+    const el = $(id);
+    if (el){ el.classList.remove("show"); el.querySelectorAll(".confetti").forEach(c=>c.remove()); }
+  });
+  const pn = $("petNameInput");
+  if (pn) pn.setAttribute("placeholder","给 TA 取个名字…");
+  const bub = $("bubble");
+  if (bub) bub.classList.remove("show");
+
+  // 按钮文字与状态彻底复位（updateAdoptBtn 会根据空名字禁用按钮）
+  updateAdoptBtn();
+  const btnEl = $("btnAdopt");
+  if (btnEl) btnEl.textContent = "领养 💖";
+
+  switchScreen("adopt");
+  // 确保领养页滚动到顶部
+  const sc = document.querySelector("#screenAdopt .scroll");
+  if (sc) sc.scrollTop = 0;
+}
+
+/* 清理历史遗留的临时分享档（share 模式会产生，避免堆积） */
+function sweepShareKeys(){
+  try{
+    const now = Date.now();
+    const stale = [];
+    for (let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if (k && k.indexOf(BASE_KEY + "::share::") === 0){
+        const ts = parseInt(k.split("::")[2], 10);
+        // 超过 2 小时的临时档视为废弃
+        if (!isNaN(ts) && now - ts > 2*3600*1000) stale.push(k);
+      }
+    }
+    stale.forEach(k=>localStorage.removeItem(k));
+    return stale.length;
+  }catch(e){ return 0; }
+}
+
+/* ============================================================
+   心情 / 状态推导
+   ============================================================ */
+function currentMoodState(){
+  if (S.stage === STAGE_GONE) return "sick";
+  if (S.stage >= STAGE_MALNOUR) return "sick";
+  if (S.stage === STAGE_HUNGRY) return "sad";
+  if (S.mood >= 70 && S.hunger >= 55) return "happy";
+  if (S.mood >= 40) return "normal";
+  return "sad";
+}
+
+function stageFromVitals(){
+  if (S.hunger <= 8){
+    // 进入"想离家"阶段，记录起始时间
+    if (S.starvingSince === null) S.starvingSince = Date.now();
+    return STAGE_LEAVING;
+  }
+  S.starvingSince = null;
+  if (S.hunger < 20) return STAGE_MALNOUR;
+  if (S.hunger < 45) return STAGE_HUNGRY;
+  return STAGE_OK;
+}
+
+/* ============================================================
+   核心心跳：时间流逝 → 饥饿 / 心情变化
+   ============================================================ */
+function tick(){
+  if (!S || !S.adopted || S.stage === STAGE_GONE) return;
+
+  const now = Date.now();
+  const dtSec = Math.max(0, Math.min(3600, (now - lastTick) / 1000)); // 单次最多结算 1 小时（防止改系统时间刷）
+  lastTick = now;
+
+  const beforeStage = S.stage;
+
+  S.hunger = clamp(S.hunger - TICK_HUNGER * dtSec, 0, 100);
+  S.mood   = clamp(S.mood   - TICK_MOOD   * dtSec, 0, 100);
+
+  // 饿了会掉心情
+  if (S.hunger < 45){
+    S.mood = clamp(S.mood - 0.9 * (dtSec/3600) * (45 - S.hunger), 0, 100);
+  }
+
+  // 跨天结算
+  const today = new Date().toDateString();
+  if (today !== S.lastDayStamp){
+    // 一天结束时若饱食度健康，记一天"好好照顾"
+    if (S.hunger >= 50 && S.mood >= 50) S.daysAlive++;
+    S.lastDayStamp = today;
+  }
+
+  const newStage = stageFromVitals();
+  S.stage = newStage;
+
+  // 进入离家出走倒计时阶段
+  if (newStage === STAGE_LEAVING){
+    if (S.starvingSince === null) S.starvingSince = now;
+    if (now - S.starvingSince >= LEAVE_GRACE_MS){
+      doRunaway();
+      return;
+    }
+  }
+
+  if (newStage !== beforeStage) save();
+  renderHUD();
+  renderScene(false);
+  renderAlert();
+}
+
+function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+/* ============================================================
+   行为打分
+   ============================================================ */
+function applyBehavior(behav, dir){
+  if (!S || S.stage === STAGE_GONE) return;
+  const pts = behav.pts;                 // pos 为负分的负数
+  const isPos = dir === "pos";
+
+  S.score += pts;
+  if (pts > 0) S.totalEarned += pts;
+  S.bestScore = Math.max(S.bestScore, S.score);
+
+  // ---- 心情加成（作用于本次加分行为换到的金币）----
+  let earned = 0;
+  let moodBonus = null;
+  if (isPos){
+    earned = coinWithMood(pts);          // 心情越好，金币越多；心情太差会打折
+    moodBonus = moodMultiplier();
+    S.coins += earned;
+    S.mood = clamp(S.mood + Math.min(9, 3 + pts*0.5), 0, 100);
+  } else {
+    // 扣分不扣金币，只扣心情（避免"惩罚过重"）
+    S.mood = clamp(S.mood - Math.min(12, 3 + Math.abs(pts)*0.6), 0, 100);
+  }
+
+  S.logs.unshift({
+    t: Date.now(),
+    name: behav.name,
+    ico: behav.ico,
+    pts: pts,
+    dir: dir,
+  });
+  if (S.logs.length > 400) S.logs.length = 400;
+
+  // 连续好行为 streak
+  const today = new Date().toDateString();
+  if (isPos){
+    if (S.lastStreakStamp !== today){
+      // 判断昨天是否也有好行为
+      const y = new Date(Date.now() - 86400000).toDateString();
+      S.streak = (S.lastStreakStamp === y) ? S.streak + 1 : 1;
+      S.lastStreakStamp = today;
+    }
+  } else {
+    // 负面行为打断连续记录（温和处理：不清零，减半）
+    S.streak = Math.max(0, Math.floor(S.streak / 2));
+  }
+
+  save();
+
+  // 视觉反馈
+  if (isPos){
+    showFloatText("+" + pts + (earned !== pts ? " · 🪙" + earned : ""), "#2E7D32", true);
+    popHearts(5);
+    playSound("good");
+    if (moodBonus && moodBonus.label){
+      bubbleSay(pick(GOOD_REPLIES) + " " + moodBonus.label);
+      setTimeout(()=>toast(moodBonus.tip), 260);
+    } else {
+      bubbleSay(pick(GOOD_REPLIES));
+    }
+  } else {
+    showFloatText(String(pts), "#B93A3A", false);
+    playSound("bad");
+    bubbleSay(pick(BAD_REPLIES));
+  }
+
+  renderHUD();
+  renderScene(true);
+  renderAlert();
+  checkMilestones();
+  // 心情彩蛋延迟触发：等本次加分/里程碑的反馈播完，避免多条提示挤在一起
+  setTimeout(()=>checkMoodBond(), 1800);
+}
+
+const GOOD_REPLIES = ["谢谢你！我好开心～","你对我真好！","嘿嘿，我们一起加油！","你真棒！我也要努力！","最喜欢你啦！"];
+const BAD_REPLIES  = ["唔…有点难过…","我们下次做好一点好不好？","没关系，明天继续努力！","我等你变回最棒的样子～"];
+
+/* ============================================================
+   心情 → 金币加成（方案 A）
+   心情 ≥80：金币 ×1.2（四舍五入，至少 +1）
+   心情 ≥60：正常 ×1.0
+   心情 <40：打 7 折（向下取整，至少 1）
+   心情 <20：打 5 折（向下取整，至少 1）
+   ============================================================ */
+function moodMultiplier(){
+  const m = S ? S.mood : 100;
+  if (m >= 80) return { rate:1.2, label:"(心情好，金币+20%！)", tip:"💗✨ 心情超好，金币奖励 +20%！" };
+  if (m >= 60) return { rate:1.0, label:"", tip:"" };
+  if (m >= 40) return { rate:0.85, label:"", tip:"💗 心情一般，金币少了点…多陪陪 TA 吧" };
+  if (m >= 20) return { rate:0.7, label:"(心情不好，金币×0.7)", tip:"💗 心情低落，金币只剩 7 成…摸摸 TA 吧" };
+  return { rate:0.5, label:"(心情很差，金币×0.5)", tip:"💗 心情很差，金币只剩一半…快哄哄 TA！" };
+}
+
+function coinWithMood(pts){
+  const rate = moodMultiplier().rate;
+  if (pts <= 0) return 0;
+  return Math.max(1, Math.round(pts * rate));
+}
+
+function checkMilestones(){
+  const m = [
+    { k:"score100",  cond: S.totalEarned >= 100, title:"积分破百！", sub:"你已经累计获得 100 分啦，超厉害！" },
+    { k:"score300",  cond: S.totalEarned >= 300, title:"积分 300！", sub:"坚持了这么久，你和 TA 都是大赢家！" },
+    { k:"days7",     cond: S.daysAlive >= 7,     title:"照顾满 7 天！", sub:"连续一周把 TA 照顾得很好，太了不起了！" },
+    { k:"days30",    cond: S.daysAlive >= 30,    title:"整整一个月！", sub:"一个月的坚持，你们已经成为最好的朋友！" },
+    { k:"streak5",   cond: S.streak >= 5,        title:"连续 5 天表现优秀！", sub:"好习惯正在慢慢长成哦～" },
+  ];
+  for (const it of m){
+    if (it.cond && !S.celebratedLevels.includes(it.k)){
+      S.celebratedLevels.push(it.k);
+      save();
+      setTimeout(()=>showCelebration(it.title, it.sub), 520);
+      return;
+    }
+  }
+}
+
+/* ============================================================
+   心情满值彩蛋（方案 D）
+   心情 100 且饱食 ≥85 时，宠物送你一份随机礼物。
+   每天最多触发 1 次，避免刷奖励。
+   ============================================================ */
+const BOND_GIFTS = [
+  { ico:"🪙", name:"金币",   apply:()=>{ S.coins += 10; },              desc:"金币 +10" },
+  { ico:"🥣", name:"营养主粮", apply:()=>{ S.bag.kibble=(S.bag.kibble||0)+2; }, desc:"背包 +2 份营养主粮" },
+  { ico:"🍰", name:"节日小蛋糕", apply:()=>{ S.bag.cake=(S.bag.cake||0)+1; },  desc:"背包 +1 份节日小蛋糕" },
+  { ico:"🍬", name:"奖励小零食", apply:()=>{ S.bag.treat=(S.bag.treat||0)+3; }, desc:"背包 +3 份奖励小零食" },
+  { ico:"🎁", name:"神秘大礼", apply:()=>{ S.coins += 5; S.bag.apple=(S.bag.apple||0)+2; }, desc:"金币 +5，背包 +2 个苹果" },
+];
+
+function checkMoodBond(){
+  if (!S || !S.adopted || S.stage === STAGE_GONE) return;
+  if (S.mood < 100 || S.hunger < 85) return;
+
+  const today = new Date().toDateString();
+  if (S.lastBondGiftStamp === today) return;   // 每天最多一次
+
+  S.lastBondGiftStamp = today;
+  const gift = pick(BOND_GIFTS);
+  try{ gift.apply(); }catch(e){}
+  S.bondGiftCount = (S.bondGiftCount || 0) + 1;
+  S.logs.unshift({
+    t: Date.now(), ico:"🎁", name:"心情满值礼物：" + gift.name,
+    pts: 0, dir: "pos",
+  });
+  if (S.logs.length > 400) S.logs.length = 400;
+  save();
+
+  playSound("win");
+  popHearts(9);
+  throwConfettiInto(".scene");
+  // 用气泡 + Toast 提示，不弹全屏层，避免打断孩子当前操作
+  bubbleSay("我现在超开心！送你一份小礼物 " + gift.ico, 4200);
+  setTimeout(()=>{ toast("🎁 " + S.petName + " 回礼： " + gift.ico + " " + gift.desc); }, 500);
+
+  renderHUD();
+  renderScene(true);
+}
+
+/* 在指定容器里撒花（用于小范围庆祝） */
+function throwConfettiInto(sel){
+  const box = document.querySelector(sel);
+  if (!box) return;
+  const colors = ["#FF8FA3","#FFD54F","#4FC3F7","#81C784","#BA68C8","#FFB74D"];
+  for (let i=0;i<24;i++){
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.position = "absolute";
+    c.style.top = "-10px";
+    c.style.left = Math.random()*100 + "%";
+    c.style.background = pick(colors);
+    c.style.animationDuration = (1.3 + Math.random()*1.2) + "s";
+    c.style.animationDelay = (Math.random()*0.5) + "s";
+    if (Math.random() > .6) c.style.borderRadius = "50%";
+    box.appendChild(c);
+    setTimeout(()=>c.remove(), 3200);
+  }
+}
+
+/* ============================================================
+   喂养
+   ============================================================ */
+function feed(foodId){
+  const food = FOODS.find(f=>f.id===foodId);
+  if (!food) return;
+  if (!S.bag[foodId] || S.bag[foodId] <= 0){
+    toast("背包里没有这个食物啦，先去商店买吧～");
+    return;
+  }
+  if (S.hunger >= 99 && S.mood >= 99){
+    bubbleSay("我已经吃得饱饱的啦！");
+    return;
+  }
+  S.bag[foodId]--;
+  if (S.bag[foodId] <= 0) delete S.bag[foodId];
+  S.hunger = clamp(S.hunger + food.hunger, 0, 100);
+  S.mood   = clamp(S.mood   + food.mood,   0, 100);
+  S.candyGiven++;
+  S.stage = stageFromVitals();
+  if (S.stage !== STAGE_LEAVING) S.starvingSince = null;
+
+  S.feedLogs.unshift({ t:Date.now(), ico:food.ico, name:food.name });
+  if (S.feedLogs.length > 200) S.feedLogs.length = 200;
+
+  save();
+  playSound("eat");
+  showFloatText("+" + food.hunger + " 🍖", "#E65100", true);
+  popHearts(4);
+  bubbleSay(pick(["好好吃！谢谢你～","哇，是我最爱吃的！","啊呜一口吃掉啦！","吃饱啦，好幸福～"]));
+  eatAnim();
+  renderHUD(); renderScene(true); renderAlert();
+  renderSheet();
+  checkMoodBond();     // 喂饱后心情可能满值
+}
+
+function buyFood(foodId){
+  const food = FOODS.find(f=>f.id===foodId);
+  if (!food) return;
+  if (S.coins < food.price){
+    toast("金币不够啦，先去完成好行为赚金币吧！");
+    playSound("bad");
+    return;
+  }
+  S.coins -= food.price;
+  S.bag[foodId] = (S.bag[foodId]||0) + 1;
+  save();
+  playSound("coin");
+  toast(food.ico + " 买到了 " + food.name + "！");
+  renderHUD();
+  renderSheet();
+}
+
+function feedBest(){
+  // 一键喂食：优先喂能恢复最多的现有食物
+  const avail = FOODS.filter(f=>(S.bag[f.id]||0) > 0)
+                     .sort((a,b)=>b.hunger - a.hunger);
+  if (!avail.length){
+    openStore();
+    toast("背包空空的，先买点食物吧～");
+    return;
+  }
+  // 选一个"刚好够"的：避免浪费
+  const need = 100 - S.hunger;
+  let pickFood = avail.find(f=>f.hunger >= need) || avail[0];
+  feed(pickFood.id);
+}
+
+/* ============================================================
+   离家出走
+   ============================================================ */
+function doRunaway(){
+  S.stage = STAGE_GONE;
+  S.goneAt = Date.now();
+  save();
+  clearInterval(tickTimer); tickTimer = null;
+  playSound("leave");
+  showRunaway();
+}
+
+/* ============================================================
+   渲染：主界面
+   ============================================================ */
+const $ = id => document.getElementById(id);
+
+function renderHUD(){
+  if (!S || !S.adopted) return;
+  const c = PETS[S.kind];
+  $("hudAvatar").innerHTML = buildPetSVG(S.kind, "happy");
+  $("hudName").textContent = S.petName;
+  const st = currentMoodState();
+  const stageTxt = {0:"状态良好",1:"肚子有点饿",2:"营养不良",3:"很想离家",4:"已经离家"}[S.stage] || "";
+  $("hudSub").textContent = c.name + " · " + stageTxt;
+
+  const coinChip = $("chipCoin");
+  coinChip.innerHTML = "🪙 <span>" + S.coins + "</span>";
+  const scoreChip = $("chipScore");
+  scoreChip.innerHTML = "⭐ <span>" + S.score + "</span>";
+  scoreChip.classList.toggle("neg", S.score < 0);
+
+  // 状态条
+  const h = Math.round(S.hunger), m = Math.round(S.mood);
+  $("hungerVal").textContent = h + "%";
+  $("moodVal").textContent = m + "%";
+  const hb = $("hungerBar"), mb = $("moodBar");
+  hb.style.width = h + "%";
+  mb.style.width = m + "%";
+  hb.classList.toggle("low", h < 30);
+  mb.classList.toggle("low", m < 35);
+  hb.classList.toggle("bar-pulse", h < 20);
+  mb.classList.toggle("bar-pulse", m < 20);
+
+  // 心情作用提示（金币加成 / 满值礼物）
+  const mt = $("moodTip");
+  if (mt){
+    let txt = "", color = "var(--ink-soft)";
+    if (m >= 100 && h >= 85){
+      txt = "🎁 满心情！今天可领礼物";
+      color = "#E65100";
+    } else if (S.lastBondGiftStamp === new Date().toDateString() && m >= 80){
+      txt = "✅ 今日礼物已领";
+      color = "#2E7D32";
+    } else if (m >= 80){
+      txt = "✨ 金币奖励 +20%";
+      color = "#2E7D32";
+    } else if (m >= 60){
+      txt = "金币奖励 正常";
+    } else if (m >= 40){
+      txt = "⚠️ 金币奖励 85%";
+      color = "#B25E00";
+    } else if (m >= 20){
+      txt = "⚠️ 金币奖励 70%";
+      color = "#B25E00";
+    } else {
+      txt = "🚨 金币奖励 50%";
+      color = "#B93A3A";
+    }
+    mt.textContent = txt;
+    mt.style.color = color;
+  }
+
+  // 喂食按钮副标题
+  const bagTotal = Object.values(S.bag).reduce((a,b)=>a+b,0);
+  $("feedSub").textContent = bagTotal > 0 ? ("有 " + bagTotal + " 份") : "背包空";
+}
+
+function renderScene(animate){
+  if (!S || !S.adopted) return;
+  const st = currentMoodState();
+  const svg = buildPetSVG(S.kind, st);
+  const big = $("bigPet");
+  big.innerHTML = svg;
+  big.setAttribute("class", "pet-" + st);
+
+  // 状态徽章
+  const badge = $("statusBadge");
+  const map = {
+    happy:  { t:"😊 开心", c:"linear-gradient(135deg,#66BB6A,#43A047)" },
+    normal: { t:"🙂 还不错", c:"linear-gradient(135deg,#4FC3F7,#29B6F6)" },
+    sad:    { t:"😟 有点难过", c:"linear-gradient(135deg,#FFB74D,#FB8C00)" },
+    sick:   { t:"🤒 生病了", c:"linear-gradient(135deg,#EF5350,#E53935)" },
+  };
+  const info = map[st] || map.normal;
+  badge.textContent = info.t;
+  badge.style.background = info.c;
+}
+
+function renderAlert(){
+  const b = $("alertBanner");
+  if (!S || !S.adopted || S.stage === STAGE_GONE){ b.classList.remove("show"); return; }
+
+  const now = Date.now();
+  let cls = "", txt = "";
+
+  if (S.stage === STAGE_LEAVING){
+    const left = Math.max(0, LEAVE_GRACE_MS - (now - (S.starvingSince||now)));
+    const hh = Math.floor(left/3600000), mm = Math.floor((left%3600000)/60000);
+    cls = "alert-level3";
+    txt = "🚨 " + S.petName + " 已经饿坏了，正在收拾小书包…还能挽回 " + hh + " 小时 " + mm + " 分！快喂点吃的！";
+  } else if (S.stage === STAGE_MALNOUR){
+    cls = "alert-level2";
+    txt = "⚠️ " + S.petName + " 营养不良了，看起来没精打采…赶紧喂点食物吧！";
+  } else if (S.stage === STAGE_HUNGRY){
+    cls = "alert-level1";
+    txt = "🍖 " + S.petName + " 肚子饿了（饱食度 " + Math.round(S.hunger) + "%），记得喂食哦～";
+  }
+
+  if (!txt){ b.classList.remove("show"); return; }
+  b.className = "alert-banner show " + cls;
+  b.innerHTML = txt;
+}
+
+function renderTabs(){
+  const tabs = document.querySelectorAll(".tab");
+  tabs.forEach(t=>t.classList.toggle("active", t.dataset.tab === activeTab));
+}
+
+/* ============================================================
+   气泡 / 飘字 / 特效
+   ============================================================ */
+let bubbleTimer = null;
+function bubbleSay(text, ms){
+  const b = $("bubble");
+  b.textContent = text;
+  b.classList.add("show");
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(()=>b.classList.remove("show"), ms || 2600);
+}
+
+function showFloatText(text, color, up){
+  const scene = document.querySelector(".scene");
+  const el = document.createElement("div");
+  el.className = "float-txt";
+  el.textContent = text;
+  el.style.color = color;
+  const r = scene.getBoundingClientRect();
+  el.style.left = (r.width * (0.5 + (Math.random()-0.5)*0.24)) + "px";
+  el.style.top  = (r.height * 0.34) + "px";
+  scene.appendChild(el);
+  setTimeout(()=>el.remove(), 1300);
+}
+
+function popHearts(n){
+  const scene = document.querySelector(".scene");
+  const icons = ["❤️","✨","💕","⭐","🌟"];
+  for (let i=0;i<n;i++){
+    const el = document.createElement("div");
+    el.className = "heart-pop";
+    el.textContent = pick(icons);
+    const r = scene.getBoundingClientRect();
+    el.style.left = (r.width * (0.5 + (Math.random()-0.5)*0.5)) + "px";
+    el.style.top  = (r.height * (0.45 + Math.random()*0.2)) + "px";
+    el.style.animationDelay = (i*70) + "ms";
+    scene.appendChild(el);
+    setTimeout(()=>el.remove(), 1500 + i*70);
+  }
+}
+
+function eatAnim(){
+  const stage = $("petStage");
+  stage.classList.add("eating");
+  setTimeout(()=>stage.classList.remove("eating"), 2400);
+}
+
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+let toastTimer = null;
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"), 2100);
+}
+
+/* ============================================================
+   弹层（Sheet）
+   ============================================================ */
+let activeSheet = null;
+function openSheet(title, html){
+  $("sheetTitle").textContent = title;
+  $("sheetBody").innerHTML = html;
+  $("sheetMask").classList.add("show");
+  document.body.classList.add("sheet-open");
+  $("sheetBody").scrollTop = 0;
+}
+function closeSheet(){
+  $("sheetMask").classList.remove("show");
+  document.body.classList.remove("sheet-open");
+  activeSheet = null;
+}
+function renderSheet(){
+  if (activeSheet === "store") drawStore();
+  if (activeSheet === "log")   drawLog();
+}
+
+/* ---------- 食物商店 ---------- */
+function openStore(){
+  activeSheet = "store";
+  openSheet("🏪 食物商店", "");
+  drawStore();
+}
+function drawStore(){
+  const body = $("sheetBody");
+  let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:13.5px;color:var(--ink-soft);font-weight:700">用金币给 ${esc(S.petName)} 买好吃的</div>
+      <div class="chip coin" style="font-size:15px">🪙 <span>${S.coins}</span></div>
+    </div>
+    <div class="food-grid">`;
+
+  for (const f of FOODS){
+    const afford = S.coins >= f.price;
+    const own = S.bag[f.id] || 0;
+    html += `<div class="food-card ${afford?'afford':'cant'}" data-buy="${f.id}">
+        <div class="fico">${f.ico}</div>
+        <div class="fname">${f.name}</div>
+        <div class="fprice">🪙 ${f.price}</div>
+        <div class="fheal">🍖+${f.hunger} 💗+${f.mood}</div>
+        ${own>0 ? `<div style="position:absolute;top:-7px;right:-7px;background:#4CAF50;color:#fff;font-size:11px;font-weight:900;border-radius:10px;padding:2px 7px;box-shadow:0 2px 0 rgba(0,0,0,.15)">×${own}</div>` : ""}
+      </div>`;
+  }
+  html += `</div>`;
+
+  // 背包
+  const owned = FOODS.filter(f=>(S.bag[f.id]||0) > 0);
+  html += `<div class="group-title">🎒 我的背包</div>`;
+  if (!owned.length){
+    html += `<div class="empty-tip" style="padding:16px"><span class="big">🍽️</span>背包空空的，快买点食物吧</div>`;
+  } else {
+    html += `<div class="bag-list">`;
+    for (const f of owned){
+      html += `<div class="bag-item">
+          <div class="bico">${f.ico}</div>
+          <div class="binfo">
+            <div class="bn">${f.name}</div>
+            <div class="bd">🍖 饱食 +${f.hunger} · 💗 心情 +${f.mood}</div>
+          </div>
+          <div class="bqty">×${S.bag[f.id]}</div>
+          <button class="btn btn-good btn-xs" data-feed="${f.id}">喂 TA</button>
+        </div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `<div style="margin-top:14px;font-size:11.5px;color:var(--ink-soft);line-height:1.6;text-align:center">
+    金币来自小主人的好行为 ——完成一件好事，就能给 TA 买一份美食 🐾
+  </div>`;
+
+  body.innerHTML = html;
+}
+
+function esc(s){
+  return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+/* ---------- 成长记录 ---------- */
+function openLog(){
+  activeSheet = "log";
+  openSheet("📋 成长记录", "");
+  drawLog();
+}
+function drawLog(){
+  const body = $("sheetBody");
+  let html = "";
+
+  // 概览
+  html += `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:14px">
+    ${statCard("⭐ 当前积分", S.score)}
+    ${statCard("🏆 累计获得", S.totalEarned)}
+    ${statCard("🍽️ 累计喂食", S.candyGiven + " 次")}
+    ${statCard("📅 好好照顾", S.daysAlive + " 天")}
+    ${statCard("🔥 连续优秀", S.streak + " 天")}
+    ${statCard("🎒 背包食物", Object.values(S.bag).reduce((a,b)=>a+b,0) + " 份")}
+  </div>`;
+
+  // 行为记录
+  html += `<div class="group-title">✏️ 行为记录（最近 40 条）</div>`;
+  if (!S.logs.length){
+    html += `<div class="empty-tip"><span class="big">🌱</span>还没有记录呢<br>让爸爸妈妈在「家长面板」里记一笔吧</div>`;
+  } else {
+    html += `<div class="log-list">`;
+    for (const l of S.logs.slice(0,40)){
+      const isPos = l.dir === "pos";
+      html += `<div class="log-item ${l.dir}">
+          <span style="font-size:16px">${l.ico||"📌"}</span>
+          <span class="lname">${esc(l.name)}</span>
+          <span class="lpts ${l.dir}">${l.pts>0?"+":""}${l.pts}</span>
+          <span class="ltime">${fmtTime(l.t)}</span>
+        </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // 喂养记录
+  if (S.feedLogs.length){
+    html += `<div class="group-title">🍖 喂食记录（最近 15 条）</div><div class="log-list">`;
+    for (const l of S.feedLogs.slice(0,15)){
+      html += `<div class="log-item pos">
+          <span style="font-size:16px">${l.ico}</span>
+          <span class="lname">喂了${esc(l.name)}</span>
+          <span class="ltime">${fmtTime(l.t)}</span>
+        </div>`;
+    }
+    html += `</div>`;
+  }
+
+  body.innerHTML = html;
+}
+function statCard(label, val){
+  return `<div style="background:var(--card-soft);border-radius:var(--r-md);padding:11px;border:2px solid #F0E8DA">
+      <div style="font-size:11.5px;color:var(--ink-soft);font-weight:700">${label}</div>
+      <div style="font-size:21px;font-weight:900;margin-top:3px">${val}</div>
+    </div>`;
+}
+function fmtTime(ts){
+  const d = new Date(ts);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const hh = String(d.getHours()).padStart(2,"0");
+  const mm = String(d.getMinutes()).padStart(2,"0");
+  if (sameDay) return hh + ":" + mm;
+  const y = new Date(Date.now()-86400000);
+  if (d.toDateString() === y.toDateString()) return "昨天 " + hh + ":" + mm;
+  return (d.getMonth()+1) + "/" + d.getDate() + " " + hh + ":" + mm;
+}
+
+/* ============================================================
+   家长面板
+   ============================================================ */
+let pinBuffer = "";
+
+function openParent(){
+  if (S.pinEnabled && S.pin){
+    pinBuffer = "";
+    activeSheet = "pin";
+    openSheet("🔒 家长验证", "");
+    drawPin();
+    return;
+  }
+  activeSheet = "parent";
+  openSheet("👨‍👩‍👧 家长面板", "");
+  drawParent();
+}
+
+function drawPin(){
+  const body = $("sheetBody");
+  body.innerHTML = `
+    <div style="text-align:center;padding:8px 0 4px">
+      <div style="font-size:14px;color:var(--ink-soft);font-weight:700;margin-bottom:14px">
+        请输入家长 PIN 码
+      </div>
+      <input class="form-row pin-input" id="pinIn" type="tel" inputmode="numeric"
+             maxlength="4" placeholder="••••" autocomplete="off">
+      <div id="pinDots" style="font-size:30px;letter-spacing:9px;margin:14px 0;color:var(--brand);font-weight:900;height:34px"></div>
+      <div id="pinErr" style="font-size:12.5px;color:var(--bad);font-weight:800;height:18px"></div>
+      <button class="btn btn-primary btn-block" id="pinOk" style="margin-top:10px">确认进入</button>
+      <button class="btn btn-ghost btn-block btn-sm" id="pinForgot" style="margin-top:8px">忘记 PIN 了？</button>
+    </div>`;
+  const inp = $("pinIn");
+  setTimeout(()=>inp.focus(), 220);
+  const upd = ()=>{
+    $("pinDots").textContent = "●".repeat(inp.value.length);
+  };
+  inp.addEventListener("input", ()=>{
+    inp.value = inp.value.replace(/\D/g,"").slice(0,4);
+    upd();
+    if (inp.value.length === 4) setTimeout(tryPin, 130);
+  });
+  inp.addEventListener("keydown", e=>{ if(e.key==="Enter") tryPin(); });
+  $("pinOk").onclick = tryPin;
+  $("pinForgot").onclick = ()=>{
+    openSheet("🔑 找回 PIN", `
+      <div style="font-size:13.5px;line-height:1.85;color:var(--ink-soft)">
+        忘记 PIN 码时，可以重置家长面板的 PIN。<br>
+        <b style="color:var(--ink)">重置不会删除小动物的任何数据</b>，
+        只会清空 PIN 保护，之后可以重新设置。<br><br>
+        如果确实需要重置，请点击下面的按钮。
+      </div>
+      <button class="btn btn-bad btn-block" id="doResetPin" style="margin-top:16px">重置 PIN（不删除存档）</button>
+    `);
+    $("doResetPin").onclick = ()=>{
+      S.pin = ""; S.pinEnabled = false;
+      save();
+      toast("PIN 已重置，现在可以直接进入家长面板");
+      activeSheet = "parent";
+      openSheet("👨‍👩‍👧 家长面板", "");
+      drawParent();
+    };
+  };
+}
+
+function tryPin(){
+  const inp = $("pinIn");
+  if (!inp) return;
+  if (inp.value === S.pin){
+    playSound("coin");
+    activeSheet = "parent";
+    openSheet("👨‍👩‍👧 家长面板", "");
+    drawParent();
+  } else {
+    $("pinErr").textContent = "PIN 不对哦，再试一次～";
+    inp.value = "";
+    $("pinDots").textContent = "";
+    playSound("bad");
+    setTimeout(()=>{ if($("pinErr")) $("pinErr").textContent = ""; }, 1600);
+  }
+}
+
+function drawParent(){
+  const body = $("sheetBody");
+  const posList = S.behaviors.pos;
+  const negList = S.behaviors.neg;
+  const stageTxt = {0:"状态良好 🙂",1:"肚子饿了 🍖",2:"营养不良 ⚠️",3:"想离家出走 🚨",4:"已离家出走 💔"}[S.stage];
+
+  let html = `
+  <!-- 当前宠物状态 -->
+  <div style="display:flex;align-items:center;gap:11px;background:linear-gradient(135deg,#FFF6E6,#FFEFD8);
+              border-radius:var(--r-md);padding:12px;margin-bottom:14px;border:2px solid #F5E3C4">
+    <div style="width:52px;height:52px;flex-shrink:0">${buildPetSVG(S.kind, currentMoodState())}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:15px;font-weight:900">${esc(S.petName)}<span style="font-size:11.5px;color:var(--ink-soft);font-weight:700"> · ${PETS[S.kind].name}</span></div>
+      <div style="font-size:12px;color:var(--ink-soft);font-weight:700;margin-top:3px">
+        🍖 ${Math.round(S.hunger)}% · 💗 ${Math.round(S.mood)}% · ${stageTxt}
+      </div>
+      <div style="font-size:11.5px;color:var(--ink-soft);font-weight:700;margin-top:2px">
+        ⭐ ${S.score} 分　🪙 ${S.coins} 金币
+      </div>
+    </div>
+  </div>
+
+  <div style="font-size:12.5px;color:var(--ink-soft);font-weight:700;margin-bottom:10px;line-height:1.5">
+    点击下面的行为卡片即可为 ${esc(S.petName)} 加分或扣分。<br>
+    加分 = 同时获得等量金币，可以买食物喂 TA 🍽️<br>
+    💗 <b>心情会影响金币收益</b>：心情好时金币 +20%，心情差时打折。见下方说明。
+  </div>
+
+  <!-- 心情规则说明 -->
+  <div style="background:#FFF6E6;border-radius:var(--r-md);padding:11px 13px;margin-bottom:14px;border:2px solid #F5E3C4">
+    <div style="font-size:12.5px;font-weight:900;margin-bottom:7px">💗 心情规则（当前 ${Math.round(S.mood)}%）</div>
+    <div style="font-size:11.5px;line-height:1.85;color:var(--ink-soft)">
+      ✨ 心情 ≥80 → 金币奖励 <b style="color:#2E7D32">+20%</b>${S.mood>=80?' <b>← 当前</b>':''}<br>
+      🙂 心情 60~79 → 金币奖励 正常${S.mood>=60&&S.mood<80?' <b>← 当前</b>':''}<br>
+      ⚠️ 心情 40~59 → 金币奖励 <b>85%</b>${S.mood>=40&&S.mood<60?' <b>← 当前</b>':''}<br>
+      ⚠️ 心情 20~39 → 金币奖励 <b>70%</b>${S.mood>=20&&S.mood<40?' <b>← 当前</b>':''}<br>
+      🚨 心情 &lt;20 → 金币奖励 <b>50%</b>${S.mood<20?' <b>← 当前</b>':''}<br>
+      🎁 心情满 100 且饱食 ≥85 → <b>每天可领 1 份礼物</b>（已领 ${S.bondGiftCount||0} 次）
+    </div>
+    <div style="font-size:11px;margin-top:7px;color:var(--ink-soft);line-height:1.5">
+      提示：喂食、摸摸头、完成正面行为都能提升心情。
+    </div>
+  </div>`;
+
+  html += `<div class="group-title" style="color:#2E7D32">✅ 正面行为（点击加分）</div>
+    <div class="behav-list">`;
+  for (const b of posList){
+    html += behaveItem(b, "pos");
+  }
+  html += `</div>`;
+
+  html += `<div class="group-title" style="color:#B93A3A">⚠️ 负面行为（点击扣分）</div>
+    <div class="behav-list">`;
+  for (const b of negList){
+    html += behaveItem(b, "neg");
+  }
+  html += `</div>`;
+
+  // 自定义行为
+  html += `
+  <div class="group-title">➕ 添加自定义行为</div>
+  <div class="form-row">
+    <input class="f-name" id="nbName" type="text" maxlength="14" placeholder="行为名称，如：自己整理书包">
+    <select id="nbIco" style="width:66px;text-align:center">
+      ${["📌","🧺","🛒","🐕","🌻","🧴","🪥","📝","🎹","⚽","🧦","🪣","😠","🥱","💥","🙈"].map(i=>`<option>${i}</option>`).join("")}
+    </select>
+    <input class="f-pts" id="nbPts" type="number" value="4" min="-20" max="20">
+  </div>
+  <div class="form-row" style="margin-top:0">
+    <select id="nbDir" style="flex:1">
+      <option value="pos">正面行为（加分）</option>
+      <option value="neg">负面行为（扣分）</option>
+    </select>
+    <button class="btn btn-primary btn-sm" id="nbAdd" style="flex-shrink:0">添加</button>
+  </div>
+  <div style="font-size:11px;color:var(--ink-soft);line-height:1.55;margin-top:2px">
+    小提示：加分填正数（如 4），扣分可不填负号，系统会自动转为负数。
+  </div>
+  `;
+
+  // 家长设置
+  html += `
+  <div class="group-title">⚙️ 家长设置</div>
+  <div class="set-list">
+    <div class="set-item">
+      <div class="stxt">
+        <div class="sn">PIN 码保护</div>
+        <div class="sd">开启后进入家长面板需要输入 4 位 PIN</div>
+      </div>
+      <button class="switch ${S.pinEnabled?'on':''}" id="swPin"></button>
+    </div>
+    <div class="set-item">
+      <div class="stxt">
+        <div class="sn">游戏音效</div>
+        <div class="sd">加分、喂食、金币等提示音</div>
+      </div>
+      <button class="switch ${S.sound?'on':''}" id="swSound"></button>
+    </div>
+    ${S.pinEnabled ? `
+    <div class="set-item">
+      <div class="stxt">
+        <div class="sn">修改 PIN 码</div>
+        <div class="sd">当前 PIN：${"●".repeat(S.pin.length)}</div>
+      </div>
+      <button class="btn btn-ghost btn-xs" id="btnChgPin">修改</button>
+    </div>` : ""}
+    <div class="set-item">
+      <div class="stxt">
+        <div class="sn">给 TA 补充食物（奖励）</div>
+        <div class="sd">额外赠送 3 份营养主粮到背包</div>
+      </div>
+      <button class="btn btn-coin btn-xs" id="btnGift">赠送 🎁</button>
+    </div>
+    <div class="set-item">
+      <div class="stxt">
+        <div class="sn">存档管理</div>
+        <div class="sd">查看本机所有存档 · 切换或删除某一份</div>
+      </div>
+      <button class="btn btn-ghost btn-xs" id="btnSaves">查看</button>
+    </div>
+    <div class="set-item">
+      <div class="stxt">
+        <div class="sn">分享给其他小朋友</div>
+        <div class="sd">把本文件发给别人，对方打开即是全新游戏，不会看到你的档案</div>
+      </div>
+      <button class="btn btn-ghost btn-xs" id="btnShare">查看方法</button>
+    </div>
+    <div class="set-item">
+      <div class="stxt">
+        <div class="sn">重新领养新动物</div>
+        <div class="sd" style="color:#B93A3A">会清空当前小动物的所有数据</div>
+      </div>
+      <button class="btn btn-bad btn-xs" id="btnReset">重来</button>
+    </div>
+  </div>
+
+  <div style="margin:16px 0 6px;font-size:11px;color:var(--ink-soft);text-align:center;line-height:1.6">
+    数据保存在本机浏览器中 · 存档空间「${esc(SAVE_SLOT)}」· 共 ${S.logs.length} 条行为记录
+  </div>
+  `;
+
+  body.innerHTML = html;
+}
+
+function behaveItem(b, dir){
+  return `<div class="behav clickable" data-behav="${b.id}" data-dir="${dir}">
+      <div class="bico">${b.ico}</div>
+      <div class="btxt">
+        <div class="bname">${esc(b.name)}</div>
+        ${b.desc ? `<div class="bdesc">${esc(b.desc)}</div>` : ""}
+      </div>
+      <div class="bpts ${dir}">${b.pts>0?"+":""}${b.pts}</div>
+      <button class="bdel" data-delbehav="${b.id}" data-dir="${dir}" title="删除">✕</button>
+    </div>`;
+}
+
+/* ============================================================
+   庆祝 / 离家出走 覆盖层
+   ============================================================ */
+function showCelebration(title, sub){
+  $("celebrateTitle").textContent = title;
+  $("celebrateSub").textContent = sub;
+  $("celebrateArt").innerHTML = buildPetSVG(S.kind, "happy");
+  const ov = $("celebration");
+  ov.classList.add("show");
+  playSound("win");
+  throwConfetti();
+  save();
+}
+
+function throwConfetti(){
+  const ov = $("celebration");
+  ov.querySelectorAll(".confetti").forEach(e=>e.remove());
+  const colors = ["#FF8FA3","#FFD54F","#4FC3F7","#81C784","#BA68C8","#FFB74D"];
+  for (let i=0;i<60;i++){
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.left = Math.random()*100 + "%";
+    c.style.background = pick(colors);
+    c.style.animationDuration = (1.7 + Math.random()*1.5) + "s";
+    c.style.animationDelay = (Math.random()*0.7) + "s";
+    if (Math.random() > .6) c.style.borderRadius = "50%";
+    ov.appendChild(c);
+    setTimeout(()=>c.remove(), 4200);
+  }
+}
+
+function showRunaway(){
+  const c = PETS[S.kind];
+  $("runawayArt").innerHTML = buildPetSVG(S.kind, "sad");
+  setTimeout(()=>{
+    const g = $("runawayArt").querySelector("svg");
+    if (g) g.classList.add("leave");
+  }, 700);
+  $("runawayTitle").textContent = S.petName + " 离家出走了…";
+  $("runawaySub").innerHTML =
+    "因为太久没有吃到食物，TA 饿得没有力气，<br>背上小书包去外面找吃的了。<br><br>" +
+    "<span style='opacity:.85;font-size:13.5px'>别难过，下次记得按时喂 TA 哦。<br>我们一起重新开始，做个更棒的照顾者吧！</span>";
+  $("runaway").classList.add("show");
+  makeRain();
+  save();
+}
+
+function makeRain(){
+  const box = $("rainBox");
+  box.innerHTML = "";
+  for (let i=0;i<38;i++){
+    const d = document.createElement("div");
+    d.className = "drop";
+    d.style.left = Math.random()*100 + "%";
+    d.style.animationDuration = (0.65 + Math.random()*0.7) + "s";
+    d.style.animationDelay = (Math.random()*1.8) + "s";
+    d.style.opacity = 0.2 + Math.random()*0.4;
+    box.appendChild(d);
+  }
+}
+
+/* ============================================================
+   音效（WebAudio 合成，无外部资源）
+   ============================================================ */
+let audioCtx = null;
+function ac(){
+  if (!audioCtx){
+    try{
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }catch(e){ return null; }
+  }
+  if (audioCtx.state === "suspended") audioCtx.resume().catch(()=>{});
+  return audioCtx;
+}
+
+function tone(freq, dur, type, vol, delay){
+  const ctx = ac();
+  if (!ctx || !S || !S.sound) return;
+  const t0 = ctx.currentTime + (delay||0);
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = type || "sine";
+  osc.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(vol || 0.16, t0 + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g); g.connect(ctx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.03);
+}
+
+function playSound(kind){
+  if (!S || !S.sound) return;
+  switch(kind){
+    case "good":
+      tone(660, .13, "sine", .16, 0);
+      tone(880, .16, "sine", .14, .09);
+      break;
+    case "bad":
+      tone(240, .20, "triangle", .13, 0);
+      tone(180, .24, "triangle", .11, .10);
+      break;
+    case "coin":
+      tone(988, .09, "square", .09, 0);
+      tone(1319, .13, "square", .08, .07);
+      break;
+    case "eat":
+      tone(420, .09, "sine", .13, 0);
+      tone(520, .11, "sine", .12, .09);
+      tone(640, .13, "sine", .11, .19);
+      break;
+    case "win":
+      [523,659,784,1047].forEach((f,i)=>tone(f, .26, "sine", .15, i*.12));
+      break;
+    case "leave":
+      [440,392,330,262].forEach((f,i)=>tone(f, .42, "triangle", .13, i*.24));
+      break;
+  }
+}
+
+/* ============================================================
+   领养页
+   ============================================================ */
+function renderAdopt(){
+  const grid = $("petGrid");
+  let html = "";
+  for (const key of Object.keys(PETS)){
+    const p = PETS[key];
+    html += `<div class="pet-card" data-kind="${key}">
+        <div class="stage">${buildPetSVG(key, "happy")}</div>
+        <div class="pname">${p.name}</div>
+        <div class="ptag">${p.tag}</div>
+      </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function selectKind(kind){
+  chosenKind = kind;
+  document.querySelectorAll(".pet-card").forEach(el=>{
+    el.classList.toggle("selected", el.dataset.kind === kind);
+  });
+  const p = PETS[kind];
+  const inp = $("petNameInput");
+  inp.placeholder = "给" + p.name + "取个名字…";
+
+  // 未起名时，用 TA 的自我介绍作为提示
+  if (!inp.value.trim()){
+    const sub = document.querySelector(".adopt-sub");
+    if (sub){
+      sub.textContent = p.intro;
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(()=>{
+        if (sub) sub.textContent = "选一只小动物，给它起个名字吧！";
+      }, 3000);
+    }
+  }
+
+  // 快捷名字（含"随机"）
+  const box = $("quickNames");
+  if (box){
+    const sugg = NAME_IDEAS[kind] || [];
+    box.innerHTML = sugg.map(n=>`<button class="qn" data-nm="${n}">${n}</button>`).join("")
+      + `<button class="qn qn-dice" data-dice="1" title="随机换一批">🎲 随机</button>`;
+  }
+
+  updateAdoptBtn();
+  playSound("coin");
+}
+
+/* 同步"领养"按钮可用状态 + 顶部标题预览 */
+function updateAdoptBtn(){
+  const inp = $("petNameInput");
+  const btn = $("btnAdopt");
+  const name = (inp.value || "").trim();
+  btn.disabled = !(chosenKind && name);
+  btn.textContent = name ? ("领养 " + name + " 💖") : "领养 💖";
+}
+
+const NAME_IDEAS = {
+  dog:     ["豆豆","大黄","汪汪","雪球","来福","球球","旺仔","土豆"],
+  cat:     ["咪咪","布丁","奶糖","小虎","汤圆","柚子","糯米","芝麻"],
+  fish:    ["泡泡","小金","闪闪","咕噜","水水","橙汁","波波","小鲤"],
+  rabbit:  ["小白","棉花","跳跳","糖糖","萝卜","元宝","雪糕","木耳"],
+  hamster: ["球球","瓜子","团团","芝麻","花生","豆包","麻薯","小仓"],
+  lizard:  ["小绿","闪电","酷酷","阿龙","绿豆","将军","小石","青宝"],
+};
+
+function doAdopt(){
+  const inp = $("petNameInput");
+  const name = (inp.value || "").trim();
+  if (!chosenKind){
+    toast("请先选一只小动物～");
+    playSound("bad");
+    return;
+  }
+  if (!name){
+    toast("先给 TA 起个名字吧～");
+    inp.focus();
+    playSound("bad");
+    return;
+  }
+  S = defaultState();
+  S.kind = chosenKind;
+  S.petName = name;
+  S.adopted = true;
+  S.coins = 12;
+  S.score = 0;
+  S.hunger = 100;
+  S.mood = 100;
+  S.stage = STAGE_OK;
+  // 新手礼包
+  S.bag = { kibble: 2, treat: 1 };
+  save();
+
+  lastTick = Date.now();
+  switchScreen("game");
+  renderHUD(); renderScene(); renderAlert();
+  renderTabs();
+  startTicker();
+  playSound("win");
+  setTimeout(()=>{
+    bubbleSay("你好，我是" + name + "！以后请多多照顾我～", 3600);
+  }, 420);
+  setTimeout(()=>showCelebration("欢迎回家！", name + " 成为了你的动物朋友。记得每天照顾 TA 哦～"), 1100);
+}
+
+/* ============================================================
+   屏幕切换 / Tab
+   ============================================================ */
+function switchScreen(name){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  $("screen" + name.charAt(0).toUpperCase() + name.slice(1)).classList.add("active");
+}
+
+function switchTab(name){
+  activeTab = name;
+  renderTabs();
+  if (name === "home"){
+    closeSheet();
+  } else if (name === "log"){
+    openLog();
+  } else if (name === "parent"){
+    openParent();
+  }
+}
+
+/* ============================================================
+   心跳启动
+   ============================================================ */
+function startTicker(){
+  if (tickTimer) clearInterval(tickTimer);
+  tickTimer = setInterval(tick, TICK_MS);
+}
+
+/* ============================================================
+   事件绑定
+   ============================================================ */
+function bindEvents(){
+
+  // ---- 领养页 ----
+  $("petGrid").addEventListener("click", e=>{
+    const card = e.target.closest(".pet-card");
+    if (card) selectKind(card.dataset.kind);
+  });
+  $("btnAdopt").addEventListener("click", doAdopt);
+
+  // 名字输入：实时更新按钮与预览
+  $("petNameInput").addEventListener("input", updateAdoptBtn);
+  $("petNameInput").addEventListener("keydown", e=>{
+    if (e.key === "Enter" && !$("btnAdopt").disabled) doAdopt();
+  });
+
+  // 快捷名字 / 随机按钮（事件委托）
+  document.addEventListener("click", e=>{
+    const dice = e.target.closest("[data-dice]");
+    if (dice){
+      if (!chosenKind){ toast("先选一只小动物，再抽名字哦～"); return; }
+      const pool = NAME_IDEAS[chosenKind] || [];
+      const inp = $("petNameInput");
+      inp.value = pick(pool);
+      updateAdoptBtn();
+      playSound("coin");
+      return;
+    }
+    const qn = e.target.closest(".qn");
+    if (qn && qn.dataset.nm){
+      $("petNameInput").value = qn.dataset.nm;
+      updateAdoptBtn();
+    }
+  });
+
+  // ---- 主界面行动 ----
+  $("btnStore").addEventListener("click", ()=>{ playSound("coin"); openStore(); });
+  $("btnFeed").addEventListener("click", ()=>{ feedBest(); });
+  $("btnPetIt").addEventListener("click", ()=>{
+    if (!S || S.stage === STAGE_GONE) return;
+    S.mood = clamp(S.mood + 4, 0, 100);
+    if (S.stage === STAGE_HUNGRY) S.mood = clamp(S.mood + 2, 0, 100);
+    save();
+    popHearts(6);
+    playSound("good");
+    bubbleSay(pick(["好舒服～再摸摸！","嘻嘻，痒痒的！","最喜欢被摸头啦！","咕噜咕噜～（开心）"]));
+    renderHUD(); renderScene(true);
+    checkMoodBond();   // 摸摸头也可能触发满心情礼物
+  });
+
+  // 点击宠物
+  $("petStage").addEventListener("click", ()=>{
+    if (!S || S.stage === STAGE_GONE) return;
+    const msgs = {
+      happy:  ["嘿嘿，今天心情超好！","你在看我吗？","我们一起玩吧！"],
+      normal: ["嗯？怎么啦～","我在这里哦。","有事找我吗？"],
+      sad:    ["肚子…有点饿…","我是不是做错什么了…","好想吃东西…"],
+      sick:   ["咳咳…我不太舒服…","好难受…想吃点东西…","你能照顾我一下吗…"],
+    };
+    bubbleSay(pick(msgs[currentMoodState()] || msgs.normal));
+    playSound("coin");
+  });
+
+  // ---- Tab ----
+  document.querySelectorAll(".tab").forEach(t=>{
+    t.addEventListener("click", ()=>switchTab(t.dataset.tab));
+  });
+
+  // ---- Sheet 关闭 ----
+  $("sheetClose").addEventListener("click", ()=>{
+    closeSheet();
+    if (activeTab !== "home"){ activeTab = "home"; renderTabs(); }
+  });
+  $("sheetMask").addEventListener("click", e=>{
+    if (e.target === $("sheetMask")){
+      closeSheet();
+      if (activeTab !== "home"){ activeTab = "home"; renderTabs(); }
+    }
+  });
+
+  // ---- Sheet 内部委托 ----
+  $("sheetBody").addEventListener("click", e=>{
+    // 切换存档
+    const us = e.target.closest("[data-usesave]");
+    if (us){
+      const k = us.dataset.usesave;
+      try{
+        localStorage.setItem("petHabitGame.v1::__active__", k);
+      }catch(err){}
+      toast("正在切换到该存档…");
+      setTimeout(()=>location.reload(), 400);
+      return;
+    }
+    // 删除某份存档
+    const ds = e.target.closest("[data-delsave]");
+    if (ds){
+      const k = ds.dataset.delsave;
+      let nm = "该存档";
+      try{ const m = JSON.parse(localStorage.getItem(k)); if (m && m.petName) nm = m.petName; }catch(err){}
+      if (confirm("确定删除存档「" + nm + "」吗？\n删除后无法恢复。")){
+        try{ localStorage.removeItem(k); }catch(err){}
+        toast("已删除存档「" + nm + "」");
+        showSaves();
+      }
+      return;
+    }
+    // 买食物
+    const buy = e.target.closest("[data-buy]");
+    if (buy){ buyFood(buy.dataset.buy); return; }
+    // 喂食
+    const fd = e.target.closest("[data-feed]");
+    if (fd){ feed(fd.dataset.feed); return; }
+    // 删除行为
+    const del = e.target.closest("[data-delbehav]");
+    if (del){
+      e.stopPropagation();
+      const id = del.dataset.delbehav, dir = del.dataset.dir;
+      const arr = S.behaviors[dir];
+      const idx = arr.findIndex(x=>x.id===id);
+      if (idx >= 0){
+        const nm = arr[idx].name;
+        arr.splice(idx,1);
+        save();
+        toast("已删除「" + nm + "」");
+        drawParent();
+      }
+      return;
+    }
+    // 点击行为打分
+    const bh = e.target.closest("[data-behav]");
+    if (bh){
+      const id = bh.dataset.behav, dir = bh.dataset.dir;
+      const b = S.behaviors[dir].find(x=>x.id===id);
+      if (b){
+        applyBehavior(b, dir);
+        drawParent();
+        toast((dir==="pos"?"✅ +":"⚠️ ") + b.name + "　" + (b.pts>0?"+":"") + b.pts + " 分");
+      }
+      return;
+    }
+    // 添加自定义行为
+    if (e.target.closest("#nbAdd")){ addCustomBehavior(); return; }
+    // PIN 开关
+    if (e.target.closest("#swPin")){ togglePin(); return; }
+    // 音效开关
+    if (e.target.closest("#swSound")){
+      S.sound = !S.sound; save();
+      if (S.sound) playSound("coin");
+      drawParent();
+      return;
+    }
+    // 修改 PIN
+    if (e.target.closest("#btnChgPin")){ changePin(); return; }
+    // 分享说明
+    if (e.target.closest("#btnShare")){ showShareInfo(); return; }
+    // 存档管理
+    if (e.target.closest("#btnSaves")){ showSaves(); return; }
+    // 赠送食物
+    if (e.target.closest("#btnGift")){
+      S.bag.kibble = (S.bag.kibble||0) + 3;
+      save();
+      playSound("coin");
+      toast("🎁 已赠送 3 份营养主粮到背包");
+      renderHUD();
+      drawParent();
+      return;
+    }
+    // 重新领养
+    if (e.target.closest("#btnReset")){
+      const who = S && S.adopted ? (S.petName + " 和 TA 的所有成长记录") : "当前数据";
+      if (confirm("确定要重新领养吗？\n" + who + "都会被清空，且无法恢复。\n\n（只清空存档空间「" + SAVE_SLOT + "」，不影响别人）")){
+        clearSave();
+        backToAdopt();
+        toast("已清空，请重新选择一只小动物 🐾");
+      }
+      return;
+    }
+  });
+
+  // ---- 庆祝 / 离家出走 ----
+  $("celebrateBtn").addEventListener("click", ()=>{
+    $("celebration").classList.remove("show");
+    $("celebration").querySelectorAll(".confetti").forEach(e=>e.remove());
+  });
+  $("runawayBtn").addEventListener("click", ()=>{
+    clearSave();
+    backToAdopt();
+    toast("请重新领养一只小动物，这次一定照顾好 TA 💪");
+  });
+
+  // ---- 音效开关（HUD）----
+  $("btnSound").addEventListener("click", ()=>{
+    S.sound = !S.sound;
+    save();
+    $("btnSound").textContent = S.sound ? "🔊" : "🔇";
+    if (S.sound) playSound("coin");
+    toast(S.sound ? "音效已开启 🔊" : "音效已关闭 🔇");
+  });
+
+  // ---- 页面可见性 & 离开 ----
+  document.addEventListener("visibilitychange", ()=>{
+    if (document.hidden){
+      save();
+    } else {
+      // 回到前台，结算离线时间
+      if (S && S.adopted) { tick(); }
+    }
+  });
+  window.addEventListener("beforeunload", save);
+
+  // 首次交互激活音频
+  const wake = ()=>{ ac(); document.removeEventListener("touchstart", wake); document.removeEventListener("click", wake); };
+  document.addEventListener("touchstart", wake, { passive:true });
+  document.addEventListener("click", wake);
+}
+
+function addCustomBehavior(){
+  const name = $("nbName").value.trim();
+  const ico  = $("nbIco").value;
+  let pts    = parseInt($("nbPts").value, 10);
+  const dir  = $("nbDir").value;
+
+  if (!name){ toast("请先填写行为名称～"); return; }
+  if (isNaN(pts) || pts === 0) pts = 4;
+
+  // 统一符号
+  if (dir === "neg") pts = -Math.abs(pts);
+  else pts = Math.abs(pts);
+
+  S.behaviors[dir].push({
+    id: "c" + Date.now().toString(36),
+    ico, name, desc: "", pts,
+  });
+  save();
+  playSound("coin");
+  toast("已添加「" + name + "」" + (pts>0?" +":" ") + pts + " 分");
+  drawParent();
+}
+
+function togglePin(){
+  if (!S.pinEnabled){
+    // 开启：设置 PIN
+    openSheet("🔐 设置 PIN 码", `
+      <div style="font-size:13.5px;color:var(--ink-soft);line-height:1.7;margin-bottom:12px">
+        设置一个 4 位数字 PIN，之后进入家长面板需要输入它。<br>
+        请记好这个密码，忘记可以在面板里重置。
+      </div>
+      <input class="form-row pin-input" id="newPin" type="tel" inputmode="numeric" maxlength="4" placeholder="••••">
+      <button class="btn btn-primary btn-block" id="savePin" style="margin-top:16px">保存并开启</button>
+    `);
+    setTimeout(()=>$("newPin") && $("newPin").focus(), 220);
+    $("savePin").onclick = ()=>{
+      const v = ($("newPin").value||"").replace(/\D/g,"");
+      if (v.length !== 4){ toast("请输入 4 位数字"); return; }
+      S.pin = v; S.pinEnabled = true; save();
+      playSound("coin"); toast("🔐 PIN 已设置，家长面板已受保护");
+      activeSheet = "parent"; openSheet("👨‍👩‍👧 家长面板", ""); drawParent();
+    };
+  } else {
+    S.pinEnabled = false; S.pin = ""; save();
+    toast("PIN 保护已关闭");
+    drawParent();
+  }
+}
+
+/* 找回存档提示条（渲染在领养页顶部，用户当前正看到的地方） */
+function showRecoverPrompt(orphan, count){
+  // orphan 时用户一定停在领养页，把提示条插到领养页头部才可见
+  const host = document.querySelector("#screenAdopt .adopt-head");
+  if (!host) return;
+
+  // 防重复
+  const old = document.getElementById("recoverBar");
+  if (old) old.remove();
+
+  const extra = count > 1 ? ("（本机共 " + count + " 份存档）") : "";
+  const bar = document.createElement("div");
+  bar.id = "recoverBar";
+  bar.style.cssText = "background:#FFF8E1;border:2px solid #F5E3C4;border-left:5px solid #FFB300;border-radius:16px;padding:11px 13px;margin:4px 0 12px;display:flex;align-items:center;gap:9px;box-shadow:0 3px 0 rgba(0,0,0,.08);animation:alertIn .4s";
+  const span = document.createElement("span");
+  span.style.cssText = "flex:1;font-size:13px;font-weight:800;color:#8D6E00;line-height:1.4";
+  span.textContent = "📂 发现之前的存档「" + orphan.name + "」" + extra + "，要接着玩吗？";
+  const btn = document.createElement("button");
+  btn.className = "btn btn-primary btn-xs";
+  btn.style.flexShrink = "0";
+  btn.textContent = "找回存档";
+  btn.onclick = ()=>{
+    if (claimSave(orphan.key)){
+      toast("✅ 已找回「" + orphan.name + "」，正在载入…");
+      location.replace(location.href.split("?")[0] + (SHARE_MODE ? "?new=1" : ""));
+    } else {
+      toast("找回失败，请重试");
+    }
+  };
+  const btn2 = document.createElement("button");
+  btn2.className = "btn btn-ghost btn-xs";
+  btn2.style.flexShrink = "0";
+  btn2.textContent = "不用了";
+  btn2.onclick = ()=>{ bar.remove(); };
+  bar.appendChild(span); bar.appendChild(btn); bar.appendChild(btn2);
+  host.insertAdjacentElement("afterend", bar);
+}
+
+function showSaves(){
+  const saves = listSaves();
+  let html = `<div style="font-size:12.5px;color:var(--ink-soft);line-height:1.7;margin-bottom:12px">
+    下面是这台设备上保存的所有游戏档案。带 ✅ 的是当前正在使用的那份。
+  </div>`;
+
+  if (!saves.length){
+    html += `<div class="empty-tip"><span class="big">📂</span>还没有任何存档</div>`;
+  } else {
+    html += `<div class="bag-list">`;
+    for (const s of saves){
+      const isCur = s.key === STORAGE_KEY;
+      html += `<div class="bag-item" style="border-color:${isCur?'rgba(76,175,80,.5)':'#F0E8DA'}">
+          <div class="bico">${isCur ? "✅" : "📁"}</div>
+          <div class="binfo">
+            <div class="bn">${esc(s.name || "（未领养）")} <span style="font-size:11px;color:var(--ink-soft);font-weight:600">${isCur?"· 当前使用":""}</span></div>
+            <div class="bd">
+              存档名：${esc(s.slot.length > 22 ? s.slot.slice(0,22) + "…" : s.slot)}<br>
+              ${s.savedAt ? ("最后保存：" + fmtTime(s.savedAt)) : "从未保存"}
+            </div>
+          </div>
+          ${isCur ? "" : `<button class="btn btn-ghost btn-xs" data-usesave="${esc(s.key)}">切换</button>`}
+          <button class="btn btn-bad btn-xs" data-delsave="${esc(s.key)}">删除</button>
+        </div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `<div style="margin-top:14px;background:#FFF8E1;border-radius:12px;padding:11px;font-size:11.5px;line-height:1.7;color:#8D6E00">
+    💡 <b>为什么会有多个存档？</b><br>
+    小程序、网盘或下载工具每次打开时，文件名可能会变化，
+    系统就会为它建一份新档案。本版本已会自动找回唯一的那份旧档案，
+    通常不需要手动切换。
+  </div>`;
+  html += `<div style="margin-top:10px;font-size:11px;color:var(--ink-soft);line-height:1.6">
+    ⚠️ 删除存档不可恢复，请谨慎操作。
+  </div>`;
+
+  openSheet("📂 存档管理", html);
+}
+
+function showShareInfo(){
+  openSheet("📤 分享给其他小朋友", `
+    <div style="font-size:13.5px;line-height:1.9;color:var(--ink-soft)">
+      <b style="color:var(--ink);font-size:14.5px">✅ 推荐做法：直接把这个 HTML 文件发过去</b><br>
+      通过微信 / QQ / 邮件把 <b style="color:var(--ink)">${esc(fileName())}</b> 发给对方，
+      对方保存到手机或电脑后点开，就是一个<b style="color:var(--ink)">全新的游戏</b>，
+      会重新领养动物，<b style="color:var(--ink)">完全看不到你的档案</b>。
+      <br><br>
+      <b style="color:var(--ink);font-size:14.5px">🛡️ 为什么不会串档？</b><br>
+      存档保存在对方自己设备上，且按「文件名 + 设备」双重隔离。
+      对方的数据存在对方那里，你这里的数据也永远只有你自己能打开。
+      <br><br>
+      <b style="color:var(--ink);font-size:14.5px">⚠️ 只有一种情况要注意</b><br>
+      如果是<b style="color:var(--ink)">同一台电脑、同一个浏览器</b>里，
+      你把文件用<b style="color:var(--ink)">同名</b>保存到同一文件夹测试，才会看到同一份存档。
+      这时只要换个文件名（例如 <b style="color:var(--ink)">小小养成家2.html</b>），
+      或者用下面的「全新游戏链接」方式打开即可。
+      <br><br>
+      <b style="color:var(--ink);font-size:14.5px">🔗 强制全新游戏</b><br>
+      在文件名后面加 <b style="color:var(--ink)">?new=1</b> 打开，可以临时开一局全新游戏（适合演示）：
+      <div style="background:#F5EEE0;border-radius:10px;padding:10px;margin-top:7px;font-size:12px;word-break:break-all;font-family:monospace;color:#3A3226">
+        ${esc(fileName())}?new=1
+      </div>
+      <div style="font-size:11.5px;margin-top:6px">
+        注意：这种模式下每次打开都是全新的一局，不会存进主档案。
+      </div>
+    </div>
+    <div style="margin-top:16px;background:#E8F5E9;border-radius:12px;padding:11px;font-size:12px;line-height:1.7;color:#2E7D32">
+      💡 小提示：想给两个孩子各开一份独立档案，把文件复制成两个不同文件名即可，例如
+      「小小养成家-哥哥.html」和「小小养成家-妹妹.html」，两者互不影响。
+    </div>
+  `);
+}
+
+function fileName(){
+  try{
+    return decodeURIComponent((location.pathname||"").split("/").pop()) || "小小养成家.html";
+  }catch(e){ return "小小养成家.html"; }
+}
+
+function changePin(){  openSheet("🔐 修改 PIN 码", `
+    <div style="font-size:13.5px;color:var(--ink-soft);line-height:1.7;margin-bottom:12px">输入新的 4 位 PIN 码</div>
+    <input class="form-row pin-input" id="newPin" type="tel" inputmode="numeric" maxlength="4" placeholder="••••">
+    <button class="btn btn-primary btn-block" id="savePin" style="margin-top:16px">保存新 PIN</button>
+  `);
+  setTimeout(()=>$("newPin") && $("newPin").focus(), 220);
+  $("savePin").onclick = ()=>{
+    const v = ($("newPin").value||"").replace(/\D/g,"");
+    if (v.length !== 4){ toast("请输入 4 位数字"); return; }
+    S.pin = v; save();
+    playSound("coin"); toast("🔐 PIN 已更新");
+    activeSheet = "parent"; openSheet("👨‍👩‍👧 家长面板", ""); drawParent();
+  };
+}
+
+/* ============================================================
+   初始化
+   ============================================================ */
+function init(){
+  S = load();
+
+  // 顺手清理废弃的临时分享档
+  sweepShareKeys();
+
+  renderAdopt();
+  bindEvents();
+
+  // 分享模式提示
+  if (SHARE_MODE){
+    setTimeout(()=>toast("🎮 全新游戏模式（演示用，本次进度不会保存到主档案）"), 900);
+  }
+  // 发现设备上有其他存档，但当前文件名没匹配上 → 提供一键找回
+  if (RESOLVED.reason === "orphan" && RESOLVED.orphan){
+    const o = RESOLVED.orphan;
+    setTimeout(()=>showRecoverPrompt(o, RESOLVED.orphanCount), 700);
+  }
+
+  if (S.adopted && S.stage !== STAGE_GONE){
+    lastTick = Date.now();
+    // 结算离线时间
+    const offlineSec = Math.max(0, (Date.now() - (S.lastSeen || Date.now()))/1000);
+    if (offlineSec > 60){
+      S.hunger = clamp(S.hunger - TICK_HUNGER * Math.min(offlineSec, 86400*3), 0, 100);
+      S.mood   = clamp(S.mood   - TICK_MOOD   * Math.min(offlineSec, 86400*3), 0, 100);
+      S.stage = stageFromVitals();
+      save();
+    }
+    if (S.stage === STAGE_GONE){
+      // 离线期间已经离家
+      $("runawayArt").innerHTML = buildPetSVG(S.kind, "sad");
+      $("runawayTitle").textContent = S.petName + " 离家出走了…";
+      $("runawaySub").innerHTML = "在你不在的时候，TA 已经饿得离开了…<br><br>下次记得按时喂 TA 哦。";
+      $("runaway").classList.add("show");
+      makeRain();
+      switchScreen("game");
+      renderHUD(); renderScene(); renderAlert();
+      return;
+    }
+    $("btnSound").textContent = S.sound ? "🔊" : "🔇";
+    switchScreen("game");
+    renderHUD(); renderScene(); renderAlert();
+    startTicker();
+
+    // 欢迎回来提示
+    setTimeout(()=>{
+      if (S.stage >= STAGE_HUNGRY){
+        bubbleSay("你回来啦！我肚子有点饿…", 3200);
+      } else {
+        bubbleSay("你回来啦，我好想你！", 2600);
+      }
+    }, 700);
+  } else if (S.adopted && S.stage === STAGE_GONE){
+    $("runawayArt").innerHTML = buildPetSVG(S.kind, "sad");
+    $("runawayTitle").textContent = S.petName + " 离家出走了…";
+    $("runaway").classList.add("show");
+    makeRain();
+    switchScreen("game");
+  } else {
+    switchScreen("adopt");
+  }
+}
+
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
