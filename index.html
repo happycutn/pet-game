@@ -192,6 +192,42 @@ body{
   animation:pop .3s cubic-bezier(.34,1.56,.64,1);
 }
 @keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+@keyframes popIn{from{transform:scale(.75);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes rescueShake{0%,100%{transform:rotate(0)}25%{transform:rotate(-9deg)}75%{transform:rotate(9deg)}}
+
+/* ===== 新玩家指导页 ===== */
+.help-btn{position:absolute;right:0;top:0;font-size:12px;padding:5px 11px;opacity:.9}
+.adopt-head{position:relative}
+.tutorial-mask{
+  position:fixed;inset:0;z-index:9500;
+  background:rgba(28,22,16,.74);backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;padding:18px;
+}
+.tutorial-mask.show{display:flex;animation:tutFade .28s ease}
+@keyframes tutFade{from{opacity:0}to{opacity:1}}
+.tutorial-card{
+  width:100%;max-width:400px;max-height:88vh;overflow-y:auto;
+  background:linear-gradient(165deg,#FFFDF8,#FFF3E4);
+  border:3px solid #FFD9A8;border-radius:26px;
+  padding:24px 22px 18px;text-align:center;
+  box-shadow:0 20px 56px rgba(0,0,0,.4);
+  animation:tutPop .4s cubic-bezier(.2,1.35,.45,1);
+}
+@keyframes tutPop{from{transform:scale(.82) translateY(14px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+.tut-dots{display:flex;gap:7px;justify-content:center;margin-bottom:16px}
+.tut-dot{width:8px;height:8px;border-radius:50%;background:#E8D5BC;transition:all .25s}
+.tut-dot.on{background:#FF8A65;width:22px;border-radius:5px}
+.tut-emoji{font-size:64px;line-height:1;margin-bottom:12px;display:block}
+.tut-h{font-size:21px;font-weight:900;color:#5D4037;margin-bottom:10px;letter-spacing:.5px}
+.tut-p{font-size:14.5px;color:#6D4C41;line-height:1.85;text-align:left;
+      background:#FFF9F0;border-radius:14px;padding:14px 16px;border:1.5px solid #FFE8D0}
+.tut-p b{color:#D84315}
+.tut-p .row{display:flex;gap:9px;margin:7px 0;align-items:flex-start}
+.tut-p .row .k{flex-shrink:0;font-size:16px}
+.tut-tip{margin-top:12px;font-size:12.5px;color:#A1887F;line-height:1.6}
+.tut-foot{display:flex;gap:10px;margin-top:16px;align-items:center}
+.tut-foot .btn-primary{flex:1;font-size:15px;padding:12px}
+.tut-foot .btn-ghost{flex-shrink:0;font-size:12.5px;padding:9px 14px}
 .pet-card .stage{height:74px;display:flex;align-items:flex-end;justify-content:center;margin-bottom:4px}
 .pet-card .stage svg{height:70px;width:auto;max-width:100%}
 .pet-card .pname{font-size:13px;font-weight:800;color:var(--ink)}
@@ -627,6 +663,7 @@ body.sheet-open .tabs{
   <div class="adopt-head">
     <div class="adopt-title">🐾 领养你的动物朋友</div>
     <div class="adopt-sub">选一只小动物，给它起个名字吧！</div>
+    <button class="btn btn-ghost btn-xs help-btn" id="btnHelp">❓ 怎么玩</button>
   </div>
 
   <div class="scroll" style="flex:1;margin-bottom:10px">
@@ -640,6 +677,20 @@ body.sheet-open .tabs{
            placeholder="给 TA 取个名字…" autocomplete="off"
            enterkeyhint="done" spellcheck="false">
     <button class="btn btn-primary" id="btnAdopt" disabled>领养 💖</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     新玩家指导页（首次进入自动弹出）
+     ============================================================ -->
+<div class="tutorial-mask" id="tutorialMask">
+  <div class="tutorial-card" id="tutorialCard">
+    <div class="tut-dots" id="tutDots"></div>
+    <div class="tut-body" id="tutBody"></div>
+    <div class="tut-foot">
+      <button class="btn btn-ghost btn-xs" id="tutSkip">跳过</button>
+      <button class="btn btn-primary" id="tutNext">下一步</button>
+    </div>
   </div>
 </div>
 
@@ -783,8 +834,12 @@ function listMainSaves(){
       if (k.indexOf(BASE_KEY + "::share::") === 0) continue;  // 跳过临时档
       if (k.indexOf(BASE_KEY + "::__") === 0) continue;       // 跳过内部标记
       if (k.indexOf("::backup::") >= 0) continue;             // 跳过备份
+      // 跳过全局偏好类键（如 tutorialSeen），它们不是存档
+      if (k === BASE_KEY + "::tutorialSeen") continue;
       let meta = null;
       try{ meta = JSON.parse(localStorage.getItem(k)); }catch(e){}
+      // 存档必须是对象且带 lastSeen/adopted 等状态字段；标量值一律跳过
+      if (!meta || typeof meta !== "object" || !("lastSeen" in meta)) continue;
       out.push({
         key: k,
         slot: k.slice((BASE_KEY + "::").length),
@@ -877,6 +932,38 @@ const STAGE_LEAVING   = 3;   // 想离家（<8 持续一段时间）
 const STAGE_GONE      = 4;   // 已离家出走
 
 const LEAVE_GRACE_MS  = 6 * 3600 * 1000;  // 饱食度 <8 后，还有 6 小时抢救时间
+
+/* ---------- 夜间保护：小朋友睡觉时间不扣饱食度 ---------- */
+const NIGHT_START_H = 21;   // 21:00 开始进入夜间
+const NIGHT_END_H   = 7;    // 次日 07:00 结束夜间
+const NIGHT_FACTOR  = 0.15; // 夜间按 15% 速度消耗（几乎不掉，但非完全冻结，避免"挂机"）
+
+// 判断某个时间点是否处于夜间（支持跨零点）
+function hourInNight(h){
+  return (NIGHT_START_H > NIGHT_END_H)
+    ? (h >= NIGHT_START_H || h < NIGHT_END_H)
+    : (h >= NIGHT_START_H && h < NIGHT_END_H);
+}
+function isNightNow(d){
+  return hourInNight((d || new Date()).getHours());
+}
+
+// 计算一段真实时间段内，有多少小时属于「夜间」和「白天」
+// 用于离线结算：把离线时长拆成夜间部分和白天部分
+function splitNightHours(startMs, endMs){
+  let nightHs = 0, dayHs = 0;
+  // 逐小时切片（最多 3 天 = 72 片，开销可忽略）
+  const stepMs = 3600 * 1000;
+  let t = startMs;
+  let guard = 0;
+  while (t < endMs && guard++ < 200){
+    const segEnd = Math.min(t + stepMs, endMs);
+    const hs = (segEnd - t) / 3600000;
+    if (isNightNow(new Date(t))) nightHs += hs; else dayHs += hs;
+    t = segEnd;
+  }
+  return { nightHs, dayHs };
+}
 
 /* 喂养食物：价格 / 恢复饱食 / 恢复心情 / 描述 */
 const FOODS = [
@@ -1444,12 +1531,14 @@ function listSaves(){
       if (k && k.indexOf(BASE_KEY + "::") === 0){
         let ok = false, meta = null;
         try{ meta = JSON.parse(localStorage.getItem(k)); ok = !!meta; }catch(e){}
+        // 只认真正的存档：对象 + 带 lastSeen 字段（过滤 tutorialSeen 等偏好键）
+        if (!ok || typeof meta !== "object" || !("lastSeen" in meta)) continue;
         out.push({
           key: k,
           slot: k.slice((BASE_KEY + "::").length),
-          name: meta ? meta.petName : "?",
-          adopted: meta ? !!meta.adopted : false,
-          savedAt: meta ? meta.lastSeen : null,
+          name: meta.petName || "",
+          adopted: !!meta.adopted,
+          savedAt: meta.lastSeen || null,
           current: k === STORAGE_KEY,
         });
       }
@@ -1552,8 +1641,13 @@ function tick(){
 
   const beforeStage = S.stage;
 
-  S.hunger = clamp(S.hunger - TICK_HUNGER * dtSec, 0, 100);
-  S.mood   = clamp(S.mood   - TICK_MOOD   * dtSec, 0, 100);
+  // 夜间保护：夜间消耗打折
+  const nightNow = isNightNow(new Date(now));
+  const hungerFactor = nightNow ? NIGHT_FACTOR : 1;
+  const moodFactor   = nightNow ? NIGHT_FACTOR : 1;
+
+  S.hunger = clamp(S.hunger - TICK_HUNGER * dtSec * hungerFactor, 0, 100);
+  S.mood   = clamp(S.mood   - TICK_MOOD   * dtSec * moodFactor, 0, 100);
 
   // 饿了会掉心情
   if (S.hunger < 45){
@@ -1582,6 +1676,9 @@ function tick(){
 
   if (newStage !== beforeStage) save();
   renderHUD();
+
+  // 危险时刻：弹出「最后抢救」提醒
+  maybeShowRescue();
   renderScene(false);
   renderAlert();
 }
@@ -1834,6 +1931,177 @@ function feedBest(){
   const need = 100 - S.hunger;
   let pickFood = avail.find(f=>f.hunger >= need) || avail[0];
   feed(pickFood.id);
+}
+
+/* ============================================================
+   新玩家指导页
+   ============================================================ */
+const TUTORIAL_STEPS = [
+  {
+    emoji: "🐣",
+    title: "欢迎来到小小养成家！",
+    body: `<div class="row"><span class="k">1️⃣</span><span>先选一只你喜欢的<b>小动物</b>（狗、猫、鱼、兔子、仓鼠、蜥蜴）</span></div>
+           <div class="row"><span class="k">2️⃣</span><span>给 TA 取一个<b>好听的名字</b></span></div>
+           <div class="row"><span class="k">3️⃣</span><span>点「领养」，TA 就是你的好朋友啦！</span></div>`,
+    tip: "💡 每个小朋友都可以领养自己的动物，互不打扰哦"
+  },
+  {
+    emoji: "⭐",
+    title: "做好事，得星星",
+    body: `<div class="row"><span class="k">✅</span><span>整理房间、打扫卫生、帮大人取快递、倒垃圾…</span></div>
+           <div class="row"><span class="k">💰</span><span>每件好事都会得<b>星星</b>，还能换成<b>金币</b>！</span></div>
+           <div class="row"><span class="k">🍚</span><span>用金币去<b>商店</b>买食物，喂给你的动物</span></div>
+           <div class="row"><span class="k">🍖</span><span>吃饱饱的动物才会开心、才会长大～</span></div>`,
+    tip: "💡 做坏事（发脾气、拖拉、挑食）会扣星星哦"
+  },
+  {
+    emoji: "🚨",
+    title: "千万别饿着 TA！",
+    body: `<div class="row"><span class="k">😊</span><span>饱食度 > 45%：TA 活蹦乱跳</span></div>
+           <div class="row"><span class="k">😟</span><span>低于 45%：开始饿肚子，会提醒你</span></div>
+           <div class="row"><span class="k">🤒</span><span>低于 20%：营养不良，会生病</span></div>
+           <div class="row"><span class="k">🎒</span><span>低于 8%：TA 会收拾书包<b>离家出走</b>！</span></div>`,
+    tip: "🌙 晚上 9 点到早上 7 点，TA 在睡觉，几乎不会饿哦～"
+  },
+  {
+    emoji: "💗",
+    title: "陪陪 TA，心情会更好",
+    body: `<div class="row"><span class="k">🎁</span><span><b>心情满值</b>时，TA 会送你神秘小礼物！</span></div>
+           <div class="row"><span class="k">🪙</span><span>心情好 → 金币奖励 <b>+20%</b></span></div>
+           <div class="row"><span class="k">😢</span><span>心情差 → 金币会打折，要多陪 TA</span></div>
+           <div class="row"><span class="k">🖐️</span><span>点一点动物、摸摸头，都能让 TA 开心</span></div>`,
+    tip: "💡 每天陪陪 TA，感情会越来越深～"
+  },
+  {
+    emoji: "👨‍👩‍👧",
+    title: "给爸爸妈妈的话",
+    body: `<div class="row"><span class="k">🔒</span><span>底部「家长」标签可进入<b>家长面板</b></span></div>
+           <div class="row"><span class="k">✍️</span><span>支持<b>自定义</b>好行为 / 坏行为的加减分</span></div>
+           <div class="row"><span class="k">📖</span><span>有<b>成长记录</b>，能看到孩子这周的表现</span></div>
+           <div class="row"><span class="k">💾</span><span>游戏<b>自动存档</b>，不用手动保存</span></div>`,
+    tip: "🔑 家长面板可设置 PIN 密码，防止小朋友乱改分数"
+  }
+];
+
+let tutIndex = 0;
+
+function renderTutorialStep(){
+  const st = TUTORIAL_STEPS[tutIndex];
+  const total = TUTORIAL_STEPS.length;
+  $("tutDots").innerHTML = TUTORIAL_STEPS
+    .map((_,i)=>`<span class="tut-dot${i===tutIndex?' on':''}"></span>`).join("");
+  $("tutBody").innerHTML =
+    `<span class="tut-emoji">${st.emoji}</span>`+
+    `<div class="tut-h">${st.title}</div>`+
+    `<div class="tut-p">${st.body}</div>`+
+    (st.tip ? `<div class="tut-tip">${st.tip}</div>` : "");
+  $("tutNext").textContent = (tutIndex === total - 1) ? "开始玩吧 🎉" : "下一步";
+  $("tutSkip").style.visibility = (tutIndex === total - 1) ? "hidden" : "visible";
+}
+
+function openTutorial(idx){
+  tutIndex = idx || 0;
+  renderTutorialStep();
+  $("tutorialMask").classList.add("show");
+}
+function nextTutorial(){
+  if (tutIndex < TUTORIAL_STEPS.length - 1){
+    tutIndex++;
+    renderTutorialStep();
+    document.getElementById("tutorialCard").scrollTop = 0;
+  } else {
+    closeTutorial();
+  }
+}
+function closeTutorial(){
+  $("tutorialMask").classList.remove("show");
+  try{
+    localStorage.setItem(BASE_KEY + "::tutorialSeen", "1");
+  }catch(e){}
+}
+
+// 首次进入自动弹出
+function maybeAutoTutorial(){
+  let seen = null;
+  try{ seen = localStorage.getItem(BASE_KEY + "::tutorialSeen"); }catch(e){}
+  if (!seen){
+    setTimeout(()=>openTutorial(0), 600);
+  }
+}
+
+/* ============================================================
+   最后抢救：动物即将离家前，强制弹窗给一次喂食机会
+   ============================================================ */
+const RESCUE_TRIGGER_MS = 3 * 3600 * 1000;   // 离大限还剩 3 小时 → 弹窗
+
+function maybeShowRescue(){
+  if (!S || !S.adopted || S.stage !== STAGE_LEAVING) return;
+  if (!S.starvingSince) return;
+  const left = LEAVE_GRACE_MS - (Date.now() - S.starvingSince);
+  if (left > RESCUE_TRIGGER_MS) return;      // 还没到危险点
+  if (S.rescueShownAt && Date.now() - S.rescueShownAt < 3600*1000) return; // 1 小时内不重复弹
+
+  S.rescueShownAt = Date.now();
+  save();
+  showRescueDialog(left);
+}
+
+function showRescueDialog(leftMs){
+  const old = document.getElementById("rescueModal");
+  if (old) old.remove();
+
+  const hh = Math.floor(leftMs/3600000), mm = Math.floor((leftMs%3600000)/60000);
+  const hasFood = FOODS.some(f => (S.bag[f.id]||0) > 0);
+
+  const modal = document.createElement("div");
+  modal.id = "rescueModal";
+  modal.style.cssText = "position:fixed;inset:0;z-index:9000;background:rgba(20,16,12,.72);"+
+    "display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);";
+
+  const card = document.createElement("div");
+  card.style.cssText = "background:linear-gradient(160deg,#FFF4E6,#FFE7CF);border:3px solid #FF8A65;"+
+    "border-radius:24px;max-width:380px;width:100%;padding:26px 22px;text-align:center;"+
+    "box-shadow:0 18px 50px rgba(0,0,0,.35);animation:popIn .35s cubic-bezier(.2,1.4,.5,1);";
+
+  card.innerHTML =
+    '<div style="width:110px;height:110px;margin:0 auto 6px;animation:rescueShake 1.1s ease-in-out infinite" id="rescueArt">'+
+      buildPetSVG(S.kind, "sad") +
+    '</div>'+
+    '<div style="font-size:20px;font-weight:800;color:#D84315;margin-bottom:10px">'+
+      '⚠️ ' + escapeHtml(S.petName) + ' 正在收拾小书包…'+
+    '</div>'+
+    '<div style="font-size:15px;color:#6D4C41;line-height:1.7;margin-bottom:16px">'+
+      'TA 已经饿得受不了了，<b style="color:#D84315">还剩 ' + hh + ' 小时 ' + mm + ' 分</b> '+
+      '就会离家出走。<br>现在喂点吃的还来得及！'+
+    '</div>';
+  // 缩放进 110px 容器
+  const artEl = card.querySelector("#rescueArt svg");
+  if (artEl){ artEl.setAttribute("width","110"); artEl.setAttribute("height","110"); }
+
+  const btn = document.createElement("button");
+  btn.className = "btn btn-primary";
+  btn.style.cssText = "width:100%;margin-bottom:10px;font-size:16px;padding:13px";
+  btn.textContent = hasFood ? "🍚 马上喂食（抢救）" : "🛒 去商店买食物";
+  btn.onclick = ()=>{
+    modal.remove();
+    if (hasFood){ feedBest(); toast("💗 太好了！" + S.petName + " 不走了"); }
+    else { openStore(); }
+  };
+
+  const btn2 = document.createElement("button");
+  btn2.className = "btn btn-ghost";
+  btn2.style.cssText = "width:100%;font-size:13px";
+  btn2.textContent = "我知道啦";
+  btn2.onclick = ()=>{ modal.remove(); };
+
+  card.appendChild(btn);
+  card.appendChild(btn2);
+  modal.appendChild(card);
+  document.body.appendChild(modal);
+}
+
+function escapeHtml(s){
+  return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 
 /* ============================================================
@@ -2678,6 +2946,17 @@ function bindEvents(){
   });
   $("btnAdopt").addEventListener("click", doAdopt);
 
+  // ---- 新玩家指导页 ----
+  $("btnHelp").addEventListener("click", ()=>openTutorial(0));
+  $("tutNext").addEventListener("click", nextTutorial);
+  $("tutSkip").addEventListener("click", closeTutorial);
+  $("tutorialMask").addEventListener("click", e=>{
+    if (e.target === $("tutorialMask")) closeTutorial();
+  });
+  document.addEventListener("keydown", e=>{
+    if (e.key === "Escape" && $("tutorialMask").classList.contains("show")) closeTutorial();
+  });
+
   // 名字输入：实时更新按钮与预览
   $("petNameInput").addEventListener("input", updateAdoptBtn);
   $("petNameInput").addEventListener("keydown", e=>{
@@ -3091,11 +3370,16 @@ function init(){
 
   if (S.adopted && S.stage !== STAGE_GONE){
     lastTick = Date.now();
-    // 结算离线时间
-    const offlineSec = Math.max(0, (Date.now() - (S.lastSeen || Date.now()))/1000);
+    // 结算离线时间（夜间保护：夜间部分按 15% 计）
+    const seenMs  = S.lastSeen || Date.now();
+    const capMs   = 86400 * 3 * 1000;
+    const offMs   = Math.max(0, Math.min(Date.now() - seenMs, capMs));
+    const offlineSec = offMs / 1000;
     if (offlineSec > 60){
-      S.hunger = clamp(S.hunger - TICK_HUNGER * Math.min(offlineSec, 86400*3), 0, 100);
-      S.mood   = clamp(S.mood   - TICK_MOOD   * Math.min(offlineSec, 86400*3), 0, 100);
+      const seg = splitNightHours(Math.max(seenMs, Date.now() - capMs), Date.now());
+      const effHours = seg.dayHs + seg.nightHs * NIGHT_FACTOR;
+      S.hunger = clamp(S.hunger - HUNGER_PER_HOUR * effHours, 0, 100);
+      S.mood   = clamp(S.mood   - MOOD_PER_HOUR   * effHours, 0, 100);
       S.stage = stageFromVitals();
       save();
     }
@@ -3109,6 +3393,11 @@ function init(){
       switchScreen("game");
       renderHUD(); renderScene(); renderAlert();
       return;
+    }
+    // 离线回来时刚到危险期 → 先给一次抢救机会（而不是默默扣到离家）
+    if (S.stage === STAGE_LEAVING){
+      S.starvingSince = Date.now();   // 重新起算抢救期，让小朋友有机会喂
+      save();
     }
     $("btnSound").textContent = S.sound ? "🔊" : "🔇";
     switchScreen("game");
@@ -3131,6 +3420,7 @@ function init(){
     switchScreen("game");
   } else {
     switchScreen("adopt");
+    maybeAutoTutorial();   // 首次进入 → 显示新手指引
   }
 }
 
